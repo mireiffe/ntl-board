@@ -1,0 +1,1882 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#eef1f6">
+<title>실험 board</title>
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'nonce-VlSiE0fv5sPZax3CPPWnxQ'; style-src 'nonce-VlSiE0fv5sPZax3CPPWnxQ'; connect-src 'self'; img-src data:; base-uri 'none'; form-action 'none'">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='4' fill='%232c5d9a'/%3E%3Crect x='3' y='3' width='2.5' height='10' rx='1' fill='%23fff'/%3E%3Crect x='6.75' y='3' width='2.5' height='7' rx='1' fill='%23fff'/%3E%3Crect x='10.5' y='3' width='2.5' height='4' rx='1' fill='%23fff'/%3E%3C/svg%3E">
+<script nonce="VlSiE0fv5sPZax3CPPWnxQ">
+if ('static' === 'static') document.documentElement.classList.add('static', 'locked');   // 정적 사본: 풀기 전에는 화면을 숨긴다
+</script>
+<style nonce="VlSiE0fv5sPZax3CPPWnxQ">
+/* haze glass, 밝은 테마 하나 (1.0.10). 바탕 = 옅은 안개 gradient (고정), 면 = 반투명 흰색 + blur, 층은 둘까지
+   (바탕 위의 면 .glass / 면 위에 떠 있는 것: 머리·말풍선·암호 창). 대비는 docs/DESIGN.md 2.11 에 잰 값. */
+:root {
+  color-scheme: light;
+  /* 바탕 */
+  --bg: #eef1f6; --haze-sky: #d3e2f2; --haze-lilac: #e2dcf1; --haze-warm: #f8f0e4;
+  /* 면 */
+  --glass: rgba(255, 255, 255, .62); --float: rgba(249, 250, 253, .94); --sheet: rgba(255, 255, 255, .74);
+  --rim: rgba(255, 255, 255, .85);                       /* 안쪽 밝은 가는 테두리 */
+  --edge: rgba(30, 42, 70, .10);                          /* 바깥 옅은 선 */
+  --line: rgba(30, 42, 70, .09); --line2: rgba(30, 42, 70, .16);
+  --shade: 0 1px 2px rgba(30, 42, 70, .04), 0 10px 30px -12px rgba(30, 42, 70, .14);
+  --blur: blur(18px) saturate(150%);
+  --r: 14px; --r-sm: 9px;
+  /* 글자 */
+  --text: #1a2338; --text2: #434d66; --muted: #5a6480;
+  /* 강조 하나 + 뜻 있는 상태색 */
+  --accent: #2c5d9a; --accent-bg: rgba(44, 93, 154, .10); --accent-line: rgba(44, 93, 154, .35);
+  --good: #1c6a46; --good-bg: rgba(31, 138, 88, .10); --good-line: #2f9a68;
+  --warn: #835000; --warn-bg: rgba(214, 150, 30, .15); --warn-line: #d9a03a;
+  --crit: #a3303a; --crit-bg: rgba(200, 60, 70, .10);
+  --chip: rgba(30, 42, 70, .06);
+  /* agent 점 */
+  --s0: #8b93a7; --s1: #3b7bd0; --s2: #e0703c; --s3: #23a07a; --s4: #d39a12;
+  --s5: #d9709c; --s6: #3f9a3a; --s7: #7262d6; --s8: #d9534f;
+  --font: "Pretendard", "Pretendard Variable", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif;
+  --mono: ui-monospace, "SF Mono", "JetBrains Mono", "D2Coding", Menlo, Consolas, "Liberation Mono", monospace;
+  --hh: 104px;                                            /* 머리 높이 (JS 가 잰다) */
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root { --glass: rgba(255, 255, 255, .92); --float: rgba(255, 255, 255, .95); --sheet: rgba(255, 255, 255, .96); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  :root { --glass: rgba(255, 255, 255, .94); --float: rgba(255, 255, 255, .97); --sheet: #fff; --blur: none; }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scroll-padding-top: calc(var(--hh) + 12px); }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+body {
+  margin: 0; color: var(--text); background: var(--bg); min-height: 100vh; min-height: 100dvh;
+  font: 14px/1.55 var(--font); letter-spacing: -.003em;
+  overflow-wrap: break-word; -webkit-font-smoothing: antialiased;
+}
+body::before {                                            /* 화면에 고정된 안개 (iOS 는 background-attachment: fixed 를 무시한다) */
+  content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+  background:
+    radial-gradient(1100px 760px at 6% -8%, var(--haze-sky) 0%, rgba(211, 226, 242, 0) 62%),
+    radial-gradient(900px 680px at 100% 4%, var(--haze-lilac) 0%, rgba(226, 220, 241, 0) 58%),
+    radial-gradient(1200px 900px at 62% 112%, var(--haze-warm) 0%, rgba(248, 240, 228, 0) 62%),
+    linear-gradient(180deg, #edf0f6 0%, #f3f2f5 100%);
+}
+button, input, select { font: inherit; color: inherit; }
+sup { font-size: 12px; line-height: 0; }
+code, .mono { font-family: var(--mono); font-size: max(12px, .88em); font-weight: 450; }
+.wrap { max-width: 1480px; margin: 0 auto; padding: 0 max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left)); }
+.num, .num-c, .rk, time { font-variant-numeric: tabular-nums; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+
+/* 면 */
+.glass {
+  background: var(--glass); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
+  border: 1px solid var(--edge); border-radius: var(--r);
+  box-shadow: inset 0 0 0 1px var(--rim), var(--shade);
+}
+.sheet { background: var(--sheet); border: 1px solid var(--line); border-radius: var(--r-sm); box-shadow: inset 0 1px 0 var(--rim); }
+
+/* 머리: 떠 있는 층 */
+header.top {
+  position: sticky; top: 0; z-index: 20;
+  background: var(--float); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
+  border-bottom: 1px solid var(--edge); box-shadow: inset 0 -1px 0 var(--rim), 0 6px 24px -18px rgba(30, 42, 70, .35);
+  padding-top: env(safe-area-inset-top);
+}
+.hd { display: flex; align-items: center; gap: 8px 14px; padding-top: 9px; padding-bottom: 9px; flex-wrap: wrap; }
+.hd h1 { font-size: 16px; margin: 0; font-weight: 700; letter-spacing: -.02em; white-space: nowrap; }
+.strip { display: contents; }
+.tries { display: flex; gap: 4px; align-items: center; flex: none; }
+.tries a {
+  border: 1px solid var(--line2); background: rgba(255, 255, 255, .55); border-radius: 999px; padding: 2px 11px;
+  font-size: 12.5px; color: var(--text2); text-decoration: none; white-space: nowrap; min-height: 28px; display: inline-flex; align-items: center;
+}
+.tries a:hover { border-color: var(--accent-line); color: var(--text); }
+.tries a[aria-current="page"] { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+nav.tabs { display: flex; gap: 2px; flex: 1 1 auto; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+nav.tabs::-webkit-scrollbar, .strip::-webkit-scrollbar { display: none; }
+nav.tabs a {
+  color: var(--text2); text-decoration: none; padding: 4px 10px; border-radius: 8px; font-size: 13px; white-space: nowrap;
+  border: 1px solid transparent;
+}
+nav.tabs a:hover { background: var(--chip); color: var(--text); }
+nav.tabs a[aria-current="true"] { color: var(--accent); background: var(--accent-bg); border-color: rgba(44, 93, 154, .18); font-weight: 600; }
+.tools { display: flex; align-items: center; gap: 8px; margin-left: auto; flex: none; }
+.sitesel, .trysel { font-size: 12.5px; color: var(--muted); display: inline-flex; gap: 5px; align-items: center; white-space: nowrap; }
+.trysel { display: none; }
+.btn {
+  border: 1px solid var(--line2); background: rgba(255, 255, 255, .6); border-radius: 9px; padding: 3px 11px;
+  cursor: pointer; font-size: 13px; min-height: 30px; white-space: nowrap; color: var(--text);
+}
+.btn:hover { border-color: var(--accent-line); background: rgba(255, 255, 255, .85); }
+a.btn { text-decoration: none; display: inline-flex; align-items: center; }
+.live { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text2); }
+.live i { width: 7px; height: 7px; border-radius: 50%; background: var(--good-line); display: inline-block; box-shadow: 0 0 0 3px var(--good-bg); }
+.live.bad { color: var(--crit); font-weight: 600; border-color: var(--crit); }
+.live.bad i { background: var(--crit); box-shadow: 0 0 0 3px var(--crit-bg); }
+select, input[type="search"] {
+  border: 1px solid var(--line2); background: rgba(255, 255, 255, .7); border-radius: 9px; padding: 3px 8px; min-height: 30px; max-width: 100%;
+}
+
+/* 구획 */
+main { padding-bottom: 8px; }
+section { margin: 30px 0 0; }
+section > h2 { font-size: 16px; margin: 0 0 10px; display: flex; align-items: baseline; gap: 4px 10px; flex-wrap: wrap; font-weight: 700; letter-spacing: -.015em; }
+section > h2 small { font-weight: 400; color: var(--muted); font-size: 12.5px; letter-spacing: 0; }
+.note { color: var(--muted); font-size: 12px; }
+.empty { color: var(--muted); padding: 12px 14px; font-size: 13px; }
+.banner { border-radius: 12px; padding: 9px 14px; margin-top: 12px; font-size: 13px; border: 1px solid var(--line); background: var(--sheet); color: var(--text2); }
+.banner.crit { background: var(--crit-bg); color: var(--crit); border-color: rgba(163, 48, 58, .2); box-shadow: inset 3px 0 0 var(--crit); }
+.banner.warn { background: var(--warn-bg); color: var(--warn); border-color: rgba(131, 80, 0, .18); box-shadow: inset 3px 0 0 var(--warn-line); font-weight: 600; }
+
+/* 요약 카드 */
+.tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
+.tile { padding: 14px 18px 15px; min-width: 0; }
+.tile .lab { color: var(--text2); font-size: 12.5px; font-weight: 600; display: flex; gap: 6px; align-items: baseline; }
+.tile .locks { margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--text2); }
+.tile .locks div { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tile .num { font-size: 34px; font-weight: 700; line-height: 1.15; letter-spacing: -.03em; margin: 4px 0 4px; }
+.tile .num small { font-size: 14px; font-weight: 500; color: var(--muted); letter-spacing: 0; margin-left: 4px; }
+.tile .sub { color: var(--text2); font-size: 12.5px; line-height: 1.5; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tile .sub.mono { font-size: 12px; color: var(--text); }
+.tile.best { box-shadow: inset 0 0 0 1px var(--rim), inset 0 3px 0 var(--good-line), var(--shade); }
+.tile.best .num { color: var(--good); }
+.prog-ids { display: flex; gap: 4px; flex-wrap: wrap; max-height: 22px; overflow: hidden; margin-top: 3px; }
+
+/* site 칸, 묶음 표 */
+.overview { display: grid; grid-template-columns: minmax(14em, 3fr) minmax(0, 8fr); gap: 12px; margin-top: 12px; align-items: start; }
+.sites { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); }
+.site { padding: 11px 14px 12px; min-width: 0; border-left: 1px solid var(--line); }
+.site:first-child { border-left: 0; }
+@media (min-width: 1101px) {   /* 넓은 화면: site 칸을 묶음 표 옆에 세로로 */
+  .overview .sites { grid-template-columns: minmax(0, 1fr); }
+  .overview .site { border-left: 0; }
+  .overview .site + .site { border-top: 1px solid var(--line); }
+}
+.site .sn { font-weight: 700; font-size: 13.5px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.site .sm { font-size: 12.5px; color: var(--text2); margin-top: 3px; }
+.site .sm b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+.site .lockln { font-size: 12.5px; margin-top: 3px; color: var(--text2); }
+.site.sync .sn { font-weight: 600; color: var(--text2); font-size: 12.5px; }
+.site.stalec { background: linear-gradient(90deg, var(--warn-bg), transparent 80%); }
+.cmp { overflow: hidden; }
+.cmp h3, .panel-h { margin: 0; padding: 10px 14px 6px; font-size: 12.5px; color: var(--text2); font-weight: 600; }
+
+/* 딱지, agent 점 */
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--c); flex: none; }
+.c0 { --c: var(--s0); } .c1 { --c: var(--s1); } .c2 { --c: var(--s2); } .c3 { --c: var(--s3); } .c4 { --c: var(--s4); }
+.c5 { --c: var(--s5); } .c6 { --c: var(--s6); } .c7 { --c: var(--s7); } .c8 { --c: var(--s8); }
+.who { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.badge {
+  display: inline-block; border-radius: 6px; padding: 0 6px; font-size: 11.5px; line-height: 19px; background: var(--chip);
+  color: var(--text2); white-space: nowrap; font-weight: 500; vertical-align: 1px;
+}
+.badge.t { font-family: var(--mono); font-size: 11px; color: var(--text2); }
+.badge.site { background: transparent; border: 1px solid var(--line2); line-height: 17px; color: var(--text2); }
+.badge.gpu { background: var(--warn-bg); color: var(--warn); }
+.badge.ram { background: var(--accent-bg); color: var(--accent); }
+.badge.lock { background: var(--warn-bg); color: var(--warn); font-weight: 600; }
+.badge.stale { background: var(--crit-bg); color: var(--crit); font-weight: 600; }
+.badge.flag { background: var(--warn-bg); color: var(--warn); font-weight: 700; box-shadow: inset 0 0 0 1px rgba(131, 80, 0, .28); }
+.badge.top { background: var(--good-bg); color: var(--good); font-weight: 700; }
+.badge.wait { background: var(--accent-bg); color: var(--accent); font-weight: 600; }
+.badge.none { background: none; color: var(--muted); padding: 0; }
+.badge.via { background: var(--accent-bg); color: var(--accent); }
+.badge.memo-src { background: var(--chip); color: var(--muted); }
+.badge.lbb { background: var(--good-bg); color: var(--good); font-weight: 600; }
+.badge.excl { background: var(--chip); color: var(--muted); }
+.badge.LESSON { background: var(--accent-bg); color: var(--accent); font-weight: 600; }
+.badge.CANDIDATE { background: var(--good-bg); color: var(--good); font-weight: 600; }
+.badge.HANDOFF { background: var(--warn-bg); color: var(--warn); font-weight: 600; }
+.badge.q { background: var(--warn-bg); color: var(--warn); font-weight: 600; }
+.badge.a { background: var(--good-bg); color: var(--good); font-weight: 600; }
+
+/* 표 (제출, CV 상위, 묶음, 결과) */
+.tw { overflow: hidden; overflow: clip; }                 /* clip: 스크롤 상자를 만들지 않아 머리줄이 화면 위에 붙는다 */
+table { border-collapse: separate; border-spacing: 0; width: 100%; }
+th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th {
+  font-size: 12px; color: var(--text2); font-weight: 600; white-space: nowrap; background: rgba(247, 248, 251, .94);
+  position: sticky; top: var(--hh); z-index: 3; border-bottom-color: var(--line2);
+}
+tbody tr:last-child td { border-bottom: 0; }
+td:first-child, th:first-child { padding-left: 14px; }
+td:last-child, th:last-child { padding-right: 14px; }
+.num-c { text-align: right; white-space: nowrap; }
+th.num-c { text-align: right; }
+.lbt { font-size: 13px; line-height: 1.45; }
+.lbt td.big { font-weight: 700; font-size: 15px; letter-spacing: -.01em; }
+.lbt td.rk { color: var(--muted); text-align: right; width: 34px; }
+.lbt td.run { min-width: 11em; }
+.lbt .w2 { display: none; }
+.runname { font-family: var(--mono); font-size: 12px; color: var(--text); font-weight: 450; overflow-wrap: break-word; }
+.lbt td.who-c { font-size: 12.5px; color: var(--text2); white-space: nowrap; }
+.lbt td.t { font-size: 12px; color: var(--text2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.lbt td.ref { font-family: var(--mono); font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+.lbt td.memo, .results td.memo { color: var(--text2); min-width: 14em; max-width: 46em; }
+.lbt tr.top td { background: var(--good-bg); }
+.lbt tr.top td:first-child { box-shadow: inset 3px 0 0 var(--good-line); }
+.lbt tr.top td.big { color: var(--good); }
+.lbt tr.flag td:first-child { box-shadow: inset 3px 0 0 var(--warn-line); }
+.lbt tr.wait td.big { color: var(--muted); }
+.lbt tr.excl td { opacity: .6; }
+.lbt tfoot td { border-top: 1px solid var(--line); border-bottom: 0; }
+.lbt .narrow, .lbt td.gapc { display: none; }
+.via-s { display: none; }
+.cmpt { font-size: 13px; }
+.cmpt th { position: static; background: transparent; }
+.cmpt td { padding-top: 7px; padding-bottom: 7px; }
+.cmpt td.nm { font-weight: 600; white-space: nowrap; }
+.cmpt tr.cur td { background: var(--accent-bg); }
+.cmpt tr.cur td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+.cmpt td .big { font-weight: 700; font-size: 14px; }
+.cmpt .sub2 { display: block; font-size: 12px; color: var(--text2); }
+/* 메모: 두 줄에서 자르고 누르면 펼친다 */
+.mt { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; cursor: default; }
+.mt.open { display: block; -webkit-line-clamp: unset; }
+td.cut .mt, td.opened .mt { cursor: pointer; }
+.aux { color: var(--muted); font-size: 12px; }
+.more { border: 0; background: none; color: var(--accent); padding: 2px 0 0; cursor: pointer; font-size: 12px; display: none; }
+td.cut .more, td.opened .more, .lg .more { display: inline-block; }
+
+/* 제출 + 산점도 */
+.subs-grid { display: grid; grid-template-columns: minmax(0, 1fr) clamp(260px, 21vw, 320px); gap: 12px; align-items: start; }
+.sc { padding: 10px 12px 8px; position: sticky; top: calc(var(--hh) + 12px); }
+.sc h3 { margin: 0 0 2px; font-size: 12.5px; color: var(--text2); font-weight: 600; }
+.morebar { padding: 10px; text-align: center; border-top: 1px solid var(--line); }
+
+/* 작업 */
+.cols { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; align-items: start; padding: 4px; }
+.col { min-width: 0; padding: 6px 6px 8px; }
+.col + .col { border-left: 1px solid var(--line); }
+.col-h {
+  display: flex; align-items: center; gap: 7px; width: 100%; border: 0; background: none; padding: 4px 4px 9px;
+  font-weight: 700; font-size: 13.5px; cursor: pointer; text-align: left; border-radius: 8px;
+}
+.col-h .n { color: var(--muted); font-weight: 500; font-variant-numeric: tabular-nums; }
+.col-h .chev { margin-left: auto; color: var(--accent); font-weight: 500; font-size: 12px; }
+.st { width: 9px; height: 9px; border-radius: 3px; flex: none; }
+.st.open { background: var(--s1); } .st.prog { background: var(--good-line); } .st.wait { background: var(--s0); }
+.st.block { background: var(--crit); } .st.done { background: none; border: 2px solid var(--s0); }
+.col.shut .cards { display: none; }
+.cards { display: flex; flex-direction: column; gap: 7px; }
+.card { overflow: hidden; }
+.col.prog .card { box-shadow: inset 3px 0 0 var(--good-line), inset 0 1px 0 var(--rim); }
+.col.block .card { box-shadow: inset 3px 0 0 var(--crit), inset 0 1px 0 var(--rim); }
+.col.open .card { box-shadow: inset 3px 0 0 var(--s1), inset 0 1px 0 var(--rim); }
+.card-h { display: block; width: 100%; border: 0; background: none; text-align: left; padding: 9px 11px 9px 13px; cursor: pointer; }
+.card-h:hover { background: rgba(255, 255, 255, .55); }
+.card-h .l1 { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.tid { font-family: var(--mono); font-weight: 600; font-size: 12px; }
+.card-h .ttl { display: block; margin: 4px 0 6px; font-size: 13px; line-height: 1.45; }
+.col.done .card-h .ttl { color: var(--text2); }
+.card-h .l3 { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12px; color: var(--text2); }
+.card-b { border-top: 1px solid var(--line); padding: 9px 12px 11px 13px; font-size: 12.5px; }
+.kv { margin: 0 0 3px; color: var(--text2); }
+.kv b { color: var(--text); font-weight: 600; }
+.sum { background: var(--good-bg); border-radius: 8px; padding: 6px 9px; margin: 6px 0; }
+.sum b { color: var(--good); }
+.md { margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--line2); line-height: 1.6; }
+.md .h { font-weight: 700; margin: 8px 0 2px; }
+.md .li { padding-left: 14px; text-indent: -10px; }
+.md .gap { height: 5px; }
+.md pre { background: var(--chip); padding: 6px 8px; border-radius: 7px; overflow-x: auto; margin: 4px 0; font: 12px/1.45 var(--mono); white-space: pre-wrap; }
+.md code, .lg-x code { background: var(--chip); border-radius: 4px; padding: 0 3px; }
+.md table { width: auto; max-width: 100%; margin: 4px 0; font-size: 12.5px; display: block; overflow-x: auto; }
+.md td, .md th { border: 1px solid var(--line2); padding: 3px 7px; position: static; background: none; }
+
+/* 계획, 요약 문서 */
+.docs { overflow: hidden; }
+details.doc + details.doc { border-top: 1px solid var(--line); }
+details.doc > summary { cursor: pointer; padding: 11px 14px; font-weight: 600; font-size: 13.5px; list-style-position: inside; }
+details.doc > summary .note { font-weight: 400; margin-left: 6px; }
+details.doc .md { margin: 0; padding: 6px 16px 14px; border-top: 1px solid var(--line); font-size: 13px; }
+#summary details.doc { margin-top: 12px; }
+
+/* 거르기 */
+.filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+.filters label { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; color: var(--text2); }
+input[type="search"] { width: 220px; }
+.chip { border: 1px solid var(--line2); background: rgba(255, 255, 255, .6); border-radius: 999px; padding: 2px 11px; cursor: pointer; font-size: 12.5px; min-height: 28px; }
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+.count { color: var(--muted); font-size: 12.5px; margin-left: auto; }
+
+/* 차트 */
+.chart { padding: 12px 14px 8px; margin-bottom: 12px; position: relative; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12.5px; color: var(--text2); margin-bottom: 4px; align-items: center; }
+.legend .ln { display: inline-block; width: 18px; height: 0; border-top: 2px solid var(--text); vertical-align: middle; margin-right: 5px; }
+.legend label { margin-left: auto; display: inline-flex; gap: 5px; align-items: center; }
+.legend .sq { display: inline-block; width: 9px; height: 9px; border: 2px solid var(--good-line); transform: rotate(45deg); margin-right: 5px; vertical-align: -1px; }
+svg text { font: 11px var(--font); fill: var(--muted); }
+svg .grid { stroke: var(--line); stroke-width: 1; }
+svg .axis { stroke: var(--line2); stroke-width: 1; }
+svg .bestline { stroke: var(--text); stroke-width: 1.75; fill: none; stroke-linejoin: round; opacity: .8; }
+svg .bestlab { fill: var(--text); font-weight: 600; font-size: 11.5px; }
+svg .pt { fill: var(--c); stroke: #fff; stroke-width: 1.5; }
+svg .ring { fill: none; stroke: var(--text); stroke-width: 1.5; }
+svg .sc-pt { fill: var(--s1); stroke: #fff; stroke-width: 1.5; }
+svg .sc-pt.top { fill: var(--good-line); }
+svg .sc-pt.flag { fill: var(--s2); }
+svg .sc-n { font-size: 10.5px; fill: var(--text2); font-weight: 600; }
+svg .diag { stroke: var(--line2); stroke-dasharray: 3 3; }
+svg .lbmark { fill: none; stroke: var(--good-line); stroke-width: 2; }
+.tip {
+  position: absolute; z-index: 5; pointer-events: none; background: var(--float); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
+  border: 1px solid var(--edge); border-radius: 11px; padding: 8px 11px; font-size: 12px; max-width: 290px;
+  box-shadow: inset 0 0 0 1px var(--rim), 0 10px 30px -10px rgba(30, 42, 70, .3); display: none;
+}
+.tip .v { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.tip .r { font-family: var(--mono); font-weight: 500; }
+.tip .m { color: var(--text2); margin-top: 3px; }
+
+/* 결과 표 */
+.scroll { overflow-x: auto; }
+.results { min-width: 760px; font-size: 12.5px; }
+.results th { padding: 0; }
+.results th button { border: 0; background: none; padding: 9px 10px; cursor: pointer; font-weight: 600; color: var(--text2); width: 100%; text-align: left; white-space: nowrap; }
+.results th.num-c button { text-align: right; }
+.results th button:hover { color: var(--text); }
+.results th[aria-sort] button { color: var(--accent); }
+.results td.t { white-space: nowrap; color: var(--text2); }
+.results td.run { font-family: var(--mono); font-size: 12px; }
+.results tr.best td { background: var(--good-bg); }
+.results tr.best td:first-child { box-shadow: inset 3px 0 0 var(--good-line); }
+.results tr.best td.cv { font-weight: 700; color: var(--good); }
+.results tr.excl td { opacity: .6; }
+.results tr.excl td.cv { text-decoration: line-through; }
+
+/* 기록, 질문 */
+.list { list-style: none; margin: 0; padding: 0; }
+.lg { display: grid; align-items: start; grid-template-columns: 6.6em minmax(7em, 13em) minmax(0, 1fr); gap: 2px 14px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+.lg:last-child { border-bottom: 0; }
+.lg time { font-size: 12px; color: var(--muted); padding-top: 1px; white-space: nowrap; }
+.lg .who { font-size: 12.5px; font-weight: 600; color: var(--text); padding-top: 1px; overflow: hidden; text-overflow: ellipsis; }
+.lg .body { min-width: 0; }
+.lg-x { white-space: pre-wrap; font-size: 13px; line-height: 1.55; max-width: 64em; }   /* 큰 화면에서 한 줄이 100자를 넘지 않게 */
+.lg-x .badge { margin-right: 6px; }
+.lg-x.clamp { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
+.lg.tagged { background: linear-gradient(90deg, var(--accent-bg), transparent 55%); }
+.lg.tagged.HANDOFF { background: linear-gradient(90deg, var(--warn-bg), transparent 55%); }
+.lg.tagged.CANDIDATE { background: linear-gradient(90deg, var(--good-bg), transparent 55%); }
+footer { color: var(--muted); font-size: 12px; margin: 30px 0 34px; }
+.archived { margin-top: 12px; }
+
+/* 정적 사본 (board web --export): 풀기 화면과 사본 시각 */
+html.locked header.top, html.locked main { display: none; }
+#gate { display: none; }
+html.locked #gate { display: flex; min-height: 100vh; min-height: 100dvh; align-items: center; justify-content: center; padding: 16px; }
+#gate form, #gate .msg {
+  background: var(--float); -webkit-backdrop-filter: var(--blur); backdrop-filter: var(--blur);
+  border: 1px solid var(--edge); border-radius: 18px; box-shadow: inset 0 0 0 1px var(--rim), 0 24px 60px -28px rgba(30, 42, 70, .4);
+  padding: 26px 24px 24px; width: min(330px, 100%); display: flex; flex-direction: column; gap: 12px;
+}
+#gate h1 { font-size: 17px; margin: 0 0 2px; letter-spacing: -.02em; }
+#gate label[for] { font-size: 13px; color: var(--text2); }
+#gate p { margin: 0; color: var(--text2); }
+#gate input[type="password"] {
+  font: 600 26px/1.2 var(--mono); letter-spacing: .5em; text-indent: .5em; text-align: center; padding: 11px;
+  border: 1px solid var(--line2); border-radius: 11px; background: rgba(255, 255, 255, .8); color: var(--text); width: 100%;
+}
+#gate input[type="password"]:focus { outline: 2px solid var(--accent-line); outline-offset: 1px; }
+#gate button { font: inherit; font-weight: 600; padding: 11px; min-height: 46px; border: 0; border-radius: 11px; background: var(--accent); color: #fff; cursor: pointer; }
+#gate button:disabled, #gate input:disabled { opacity: .55; cursor: default; }
+#gate .err { color: var(--crit); font-size: 14px; margin: 0; min-height: 1.3em; }
+#gate .rem { font-size: 13px; color: var(--text2); display: flex; gap: 8px; align-items: center; min-height: 44px; }
+#gate .rem input { width: 20px; height: 20px; }
+.copyinfo { margin-top: 12px; }
+
+/* test 구조 탭 (1.0.11): board 화면과 바꿔 보는 따로 된 탭. 수준은 색 + 왼쪽 띠 모양 + 글자 딱지로 (색만으로 가르지 않는다) */
+nav.tabs a.tabx { margin-right: 6px; border-color: var(--line2); background: rgba(255, 255, 255, .55); font-weight: 600; color: var(--text); }
+#sec-test { display: none; }
+body.v-test #sec-test { display: block; }
+body.v-test main > :not(#sec-test):not(#alerts):not(#copyinfo):not(footer) { display: none; }
+:root { --lv-c: #2d3a5c; --lv-s: #5b78b0; --lv-w: #b0bdd8; --lv-none: #9aa3b8; --dup: #b4501c; }
+.tfig { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.12fr) minmax(15em, .95fr); gap: 0; margin-top: 2px; }
+.tfig .pan { padding: 12px 14px 8px; min-width: 0; border-left: 1px solid var(--line); }
+.tfig .pan:first-child { border-left: 0; }
+.tfig svg { display: block; width: 100%; height: auto; }
+.tfig svg text { font: 12px var(--font); fill: var(--text2); }
+.tfig svg text.h { font-weight: 700; fill: var(--text); font-size: 13.5px; }
+.tfig svg text.s { font-size: 11.5px; fill: var(--muted); }
+.tfig svg text.d { font-size: 10px; font-weight: 700; fill: #fff; }
+.fig-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; padding: 8px 14px 10px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--text2); grid-column: 1 / -1; }
+.fig-legend span { display: inline-flex; gap: 6px; align-items: center; }
+.sw { width: 18px; height: 11px; border-radius: 3px; display: inline-block; flex: none; }
+.sw.c { background: var(--lv-c); } .sw.s { background: var(--lv-s); }
+.sw.w { background: rgba(176, 189, 216, .55); border: 1.5px dashed var(--lv-s); } .sw.n { border: 1.5px dotted var(--lv-none); }
+.sw.d { background: var(--lv-s); box-shadow: inset 0 0 0 2px var(--dup); }
+.fig-note { grid-column: 1 / -1; padding: 0 14px 12px; font-size: 12.5px; color: var(--muted); }
+.tvals { width: 100%; font-size: 12.5px; }
+.tvals td { padding: 5px 6px; vertical-align: top; border-bottom: 1px solid var(--line); }
+.tvals tr:last-child td { border-bottom: 0; }
+.tvals td.vn { color: var(--text2); }
+.tvals td.vv { font-weight: 600; font-variant-numeric: tabular-nums; }
+.tvals .src { display: block; font-weight: 400; color: var(--muted); font-size: 12px; }
+.tvals .src s { color: var(--crit); }
+.lvb { display: inline-block; border-radius: 6px; padding: 0 6px; font-size: 11.5px; line-height: 19px; font-weight: 600; white-space: nowrap; vertical-align: 1px; }
+.lvb.c { background: rgba(45, 58, 92, .12); color: var(--lv-c); }
+.lvb.s { background: var(--accent-bg); color: var(--accent); }
+.lvb.w { background: var(--warn-bg); color: var(--warn); }
+.lvb.u, .lvb.n { background: var(--chip); color: var(--muted); }
+.lvb.r { background: var(--crit-bg); color: var(--crit); }
+.lvgrp { margin-top: 18px; }
+.lvgrp > h3 { font-size: 14.5px; margin: 0 0 8px; display: flex; gap: 8px; align-items: baseline; }
+.lvgrp > h3 small { font-weight: 400; color: var(--muted); font-size: 12.5px; }
+.facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 34em), 1fr)); gap: 10px; align-items: start; }
+.fact { padding: 12px 16px 12px 18px; min-width: 0; position: relative; }
+.fact::before { content: ""; position: absolute; left: 0; top: 12px; bottom: 12px; width: 0; border-left: 4px solid var(--lv-c); border-radius: 2px; }
+.fact.s::before { border-left: 4px solid var(--lv-s); }
+.fact.w::before { border-left: 3px dashed var(--lv-s); }
+.fact.u::before { border-left: 3px dotted var(--lv-none); }
+.fact.r::before { border-left: 3px solid var(--crit); }
+.fact .ft { font-weight: 650; font-size: 14px; line-height: 1.5; color: var(--text); }
+.fact .ft .fid { font-family: var(--mono); font-size: 12px; color: var(--text2); background: var(--chip); border-radius: 5px; padding: 0 5px; margin-right: 6px; vertical-align: 1px; font-weight: 500; }
+.fact .fm { font-size: 12px; color: var(--muted); margin-top: 3px; display: flex; flex-wrap: wrap; gap: 2px 10px; }
+.fact .fm .chg { color: var(--warn); }
+.fact ul { margin: 8px 0 0; padding: 0 0 0 1.15em; font-size: 13px; line-height: 1.55; color: var(--text2); }
+.fact li { margin: 3px 0; overflow-wrap: anywhere; }
+.fact li code { background: var(--chip); border-radius: 4px; padding: 0 3px; }
+.fact li .by { color: var(--muted); font-size: 12px; margin-left: 4px; white-space: nowrap; }
+.fact .why { font-size: 12.5px; color: var(--crit); margin-top: 6px; }
+.unk { list-style: none; margin: 0; padding: 4px 0; }
+.unk li { padding: 9px 16px; border-bottom: 1px solid var(--line); font-size: 13.5px; }
+.unk li:last-child { border-bottom: 0; }
+.unk .fm { font-size: 12px; color: var(--muted); }
+.unk .fid { font-size: 12px; color: var(--text2); background: var(--chip); border-radius: 5px; padding: 0 5px; margin-right: 4px; }
+.unk ul { margin: 4px 0 0; padding-left: 1.15em; font-size: 13px; color: var(--text2); }
+details.rej { margin-top: 18px; }
+details.rej > summary { cursor: pointer; padding: 11px 14px; font-weight: 600; font-size: 13.5px; }
+details.rej .facts { padding: 0 12px 12px; }
+.tprob { margin-top: 12px; font-size: 12.5px; color: var(--warn); }
+@media (max-width: 1100px) {
+  .tfig { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .tfig .pan.vals { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--line); }
+}
+@media (max-width: 640px) {   /* 휴대폰: 두 칸을 위아래로 */
+  .tfig { grid-template-columns: minmax(0, 1fr); }
+  .tfig .pan { border-left: 0; padding: 10px 12px 6px; }
+  .tfig .pan + .pan { border-top: 1px solid var(--line); }
+  .fact { padding: 11px 13px 11px 16px; }
+  .fact .ft { font-size: 15px; }
+  .fact ul { font-size: 14.5px; padding-left: 1.05em; }
+  .tvals { font-size: 13.5px; }
+}
+
+/* 실험 교훈 탭 (1.0.12): 카드 = 제목(쉬운 말) · 내용(쉬운 말) · 상세(기술, 접힘). 판정은 글자 + 기호 + 색 */
+#sec-lessons { display: none; }
+body.v-lessons #sec-lessons { display: block; }
+body.v-lessons main > :not(#sec-lessons):not(#alerts):not(#copyinfo):not(footer) { display: none; }
+.ldash { padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 8px 22px; align-items: center; }
+.ldash .tot { font-size: 14px; color: var(--text2); }
+.ldash .tot b { font-size: 20px; color: var(--text); font-variant-numeric: tabular-nums; margin-right: 2px; }
+.ldash .grp { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.ldash .grp > .lab { font-size: 12px; color: var(--muted); margin-right: 2px; }
+.kchip { font: inherit; font-size: 13px; color: var(--text); background: rgba(255, 255, 255, .6); border: 1px solid var(--line2); border-radius: 999px; padding: 2px 10px; cursor: pointer; }
+.kchip b { font-variant-numeric: tabular-nums; margin-left: 3px; }
+.kchip:hover { border-color: var(--accent-line); }
+.vcount { display: inline-flex; gap: 4px; align-items: center; font-size: 13px; }
+.vcount b { font-variant-numeric: tabular-nums; }
+.vb { display: inline-flex; gap: 4px; align-items: center; border-radius: 6px; padding: 0 7px 0 5px; font-size: 12px; line-height: 21px; font-weight: 650; white-space: nowrap; }
+.vb i { font-style: normal; font-weight: 800; width: 1.1em; text-align: center; }
+.vb.g { background: var(--good-bg); color: var(--good); box-shadow: inset 0 0 0 1px rgba(31, 138, 88, .28); }
+.vb.n { background: var(--chip); color: var(--text2); box-shadow: inset 0 0 0 1px var(--line2); }
+.vb.c { background: var(--crit-bg); color: var(--crit); box-shadow: inset 0 0 0 1px rgba(163, 48, 58, .3); }
+.vb.p { background: var(--accent-bg); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent-line); }
+.vb.r { background: transparent; color: var(--muted); box-shadow: inset 0 0 0 1px var(--line2); border: 1px dashed transparent; }
+.lkind { margin-top: 20px; scroll-margin-top: calc(var(--hh) + 12px); }
+.lkind > h3 { font-size: 15.5px; margin: 0 0 8px; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.lkind > h3 small { font-weight: 400; color: var(--muted); font-size: 12.5px; }
+.lcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 27em), 1fr)); gap: 10px; align-items: start; }
+.lesson { padding: 13px 16px 11px; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.lesson .lh { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.lesson .lid { font-family: var(--mono); font-size: 11.5px; color: var(--muted); margin-left: auto; }
+.lesson .lt { margin: 0; font-size: 15.5px; line-height: 1.45; font-weight: 700; color: var(--text); overflow-wrap: anywhere; }
+.lesson .ls { margin: 0; font-size: 13.5px; line-height: 1.65; color: var(--text2); overflow-wrap: anywhere; }
+.lesson details.ldet { border-top: 1px solid var(--line); margin-top: 2px; }
+.lesson details.ldet > summary { cursor: pointer; padding: 7px 0 3px; font-size: 13px; font-weight: 600; color: var(--accent); list-style-position: inside; }
+.lesson details.ldet > summary .note { font-weight: 400; margin-left: 4px; }
+.lesson .ldet .md { margin-top: 2px; padding-top: 6px; font-size: 12.8px; color: var(--text2); overflow-wrap: anywhere; min-width: 0; }
+.lesson .ldet .md table { max-width: 100%; }
+.lesson .ldet .md td { overflow-wrap: normal; white-space: nowrap; }
+.lesson .ldet .add { margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--line2); }
+.lesson .ldet .add .by { color: var(--muted); font-size: 11.5px; margin-left: 4px; white-space: nowrap; }
+.lesson .lf { display: flex; flex-wrap: wrap; gap: 3px 12px; font-size: 12px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 7px; margin-top: 2px; }
+.lesson .lf .rel { display: inline-flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.tlink { font: 500 11.5px var(--mono); color: var(--accent); background: var(--accent-bg); border: 0; border-radius: 5px; padding: 1px 6px; cursor: pointer; }
+.tlink:hover { text-decoration: underline; }
+.tlink0 { font: 500 11.5px var(--mono); color: var(--muted); background: var(--chip); border-radius: 5px; padding: 1px 6px; }
+@media (max-width: 640px) {
+  .ldash { padding: 11px 13px; gap: 8px 14px; }
+  .lesson { padding: 12px 13px 10px; }
+  .lesson .lt { font-size: 16px; }
+  .lesson .ls { font-size: 15px; }
+  .lesson .ldet .md { font-size: 14px; }
+  .tlink, .kchip { min-height: 32px; }
+}
+
+@media (max-width: 1279px) {
+  nav.tabs { order: 10; flex-basis: 100%; margin: -2px -10px 0; }
+  .lbt .wide2 { display: none; }
+  .lbt .w2 { display: inline; }
+  .lbt td.who-c { white-space: normal; }
+}
+@media (max-width: 1100px) {
+  .cols { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .col:nth-child(4) { border-left: 0; }
+  .subs-grid, .overview { grid-template-columns: minmax(0, 1fr); }
+  .sc { position: static; }
+  .tw.wide-scroll { overflow-x: auto; overflow-y: hidden; }
+  .tw.wide-scroll th { position: static; }
+}
+@media (max-width: 900px) {
+  /* 휴대폰: 제출·CV 상위 표는 줄마다 카드로 접는다 (순위 · 큰 값 · 둘째 값 · CV−LB / 작업·실행 / site·agent·시각 / 메모) */
+  .lbt thead { display: none; }
+  .lbt, .lbt tbody, .lbt tfoot { display: block; }
+  .lbt tr { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 14px; row-gap: 3px; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+  .lbt tbody tr:last-child { border-bottom: 0; }
+  .lbt td { display: block; padding: 0; border: 0; min-width: 0; text-align: left; }
+  .lbt td:first-child { padding-left: 0; } .lbt td:last-child { padding-right: 0; }
+  .lbt td.rk { width: auto; min-width: 1.4em; font-size: 13px; }
+  .lbt td.big { font-size: 18px; }
+  .lbt td[data-l]::before { content: attr(data-l) " "; color: var(--muted); font-size: 12px; font-weight: 400; letter-spacing: 0; }
+  .lbt td.gapc { display: block; font-size: 13px; color: var(--text2); }
+  .lbt td.sec { font-size: 14px; }
+  .lbt td.run, .lbt td.memo { flex: 1 1 100%; min-width: 0; }
+  .lbt td.run { margin-top: 2px; }
+  .lbt td.memo .mt { -webkit-line-clamp: 2; line-clamp: 2; }
+  .lbt td.memo .mt.open { -webkit-line-clamp: unset; }
+  .lbt td.memo:empty { display: none; }
+  .lbt .wide { display: none; }
+  .lbt tr.top td:first-child, .lbt tr.flag td:first-child { box-shadow: none; }
+  .lbt tr.top { background: var(--good-bg); box-shadow: inset 3px 0 0 var(--good-line); }
+  .lbt tr.top td { background: none; }
+  .lbt tr.flag { box-shadow: inset 3px 0 0 var(--warn-line); }
+  .lbt tfoot tr { display: block; }
+  .lbt tfoot td { padding: 0; }
+  .lbt .narrow { display: block; color: var(--text2); font-size: 12.5px; margin-top: 3px; }
+}
+@media (max-width: 760px) {
+  .hd { gap: 6px 8px; padding-top: 7px; padding-bottom: 6px; }
+  /* 휴대폰 머리 두 줄: (묶음 · site · 갱신) / 구획 이동 띠 */
+  .strip { display: block; order: 10; flex-basis: 100%; min-width: 0; }
+  .strip .tries, .hd h1 { display: none; }
+  .strip nav.tabs { padding: 0; margin: 0 -6px; }
+  .tools { gap: 6px; width: 100%; margin: 0; }
+  .trysel { display: inline-flex; flex: 1 1 0; min-width: 0; }
+  .sitesel { flex: 1 1 0; min-width: 0; }
+  .trysel select, .sitesel select { width: 100%; min-width: 0; }
+  .trysel .lab, .sitesel .lab { font-size: 12px; }
+  .live .ls { display: none; }
+  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 12px; }
+  .tile { padding: 11px 13px 12px; }
+  .tile .num { font-size: 27px; }
+  .tile.progt { grid-column: 1 / -1; }
+  .tile .sub { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
+  .tile .sub.mono { -webkit-line-clamp: 1; line-clamp: 1; word-break: break-all; }
+  .sites { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .site:nth-child(odd) { border-left: 0; }
+  .site:nth-child(n+3) { border-top: 1px solid var(--line); }
+  .cols { grid-template-columns: minmax(0, 1fr); }
+  .col + .col { border-left: 0; border-top: 1px solid var(--line); }
+  .col-h { padding: 8px 4px; }
+  .col:not(.shut) .col-h { margin-bottom: 6px; }
+  input[type="search"] { width: 100%; }
+  .count { margin-left: 0; width: 100%; }
+  section { margin-top: 26px; }
+  .via-l { display: none; } .via-s { display: inline; }
+  .fl-t { display: none; }
+  .cmpt thead { display: none; }
+  .cmpt, .cmpt tbody { display: block; }
+  .cmpt tr { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 10px; padding: 8px 14px; border-bottom: 1px solid var(--line); }
+  .cmpt tbody tr:last-child { border-bottom: 0; }
+  .cmpt td { display: block; padding: 0; border: 0; background: none !important; box-shadow: none !important; }
+  .cmpt tr.cur { background: var(--accent-bg); box-shadow: inset 3px 0 0 var(--accent); }
+  .cmpt td.nm { grid-column: 1 / -1; margin-bottom: 2px; }
+  .cmpt td.lbcol::before { content: "최고 LB "; color: var(--muted); font-size: 12px; }
+  .cmpt td.cvcol::before { content: "최고 CV "; color: var(--muted); font-size: 12px; }
+  .lg { grid-template-columns: auto minmax(0, 1fr); gap: 1px 10px; padding: 10px 14px; }
+  .lg .body { grid-column: 1 / -1; }
+}
+@media (max-width: 760px) {
+  body { font-size: 15px; }
+  .badge, .badge.t, .note, .count, .tile .sub, .site .sm, .lockln, .aux, .lbt td.t, .lbt td.ref, .lg time { font-size: 12px; }
+  .badge { line-height: 20px; }
+  .lg-x, .card-h .ttl, .lbt, .md, .card-b { font-size: 15px; }
+  .cmpt { font-size: 14px; }
+  select, input[type="search"], input[type="password"] { font-size: 16px; }   /* iOS Safari 가 확대하지 않게 */
+  .runname { font-size: 13px; }
+}
+@media (pointer: coarse), (max-width: 760px) {
+  .btn, select, input[type="search"], .chip, .more, .col-h, details.doc > summary, .tries a, nav.tabs a, .results th button, .legend label { min-height: 44px; }
+  .legend input { width: 20px; height: 20px; }
+  .tries a, nav.tabs a, .more { display: inline-flex; align-items: center; }
+  .more { padding: 0 6px 0 0; }
+  .card-h { padding-top: 11px; padding-bottom: 11px; }
+}
+@media (max-height: 520px) and (orientation: landscape) {   /* 눕힌 휴대폰: 머리를 붙이지 않는다 */
+  header.top { position: static; }
+  th { top: 0; }
+  html { scroll-padding-top: 12px; }
+}
+@media (max-width: 430px) {
+  .trysel .lab, .sitesel .lab { display: none; }   /* 묶음·site 는 고른 값으로 알아본다 (title 에 이름) */
+  .btn { padding: 3px 9px; }
+}
+@media (max-width: 380px) {
+  .wrap { padding: 0 12px; }
+}
+</style>
+</head>
+<body>
+<div id="gate" aria-live="polite"></div>
+<header class="top">
+  <div class="wrap hd">
+    <h1>실험 board</h1>
+    <div class="strip">
+      <div class="tries" id="tries" aria-label="실험 묶음"></div>
+      <nav class="tabs" aria-label="구획">
+        <a href="#sec-test" id="nav-test" class="tabx" data-view="test" title="알아낸 test 사실 (수준별, 모든 site)">test 구조</a><a href="#sec-lessons" id="nav-lessons" class="tabx" data-view="lessons" title="실험을 종류별로 모은 교훈 (모든 site)">실험 교훈</a><a href="#sec-subs">제출</a><a href="#sec-cvtop">CV 상위</a><a href="#sec-tasks">작업</a><a href="#sec-plan" id="nav-plan">계획</a><a href="#sec-results">결과</a><a href="#sec-log">기록</a><a href="#sec-qna">질문과 답</a>
+      </nav>
+    </div>
+    <div class="tools">
+      <label class="trysel" title="실험 묶음"><span class="lab">묶음</span> <select id="try-f" aria-label="실험 묶음"></select></label>
+      <label class="sitesel" title="이 site 의 작업·기록·결과·질문·계획만 보기"><span class="lab">site</span> <select id="site-f"><option value="">모두</option></select></label>
+      <button class="btn live" id="reload" type="button" title="누르면 지금 다시 읽는다"><i></i><span>불러오는 중</span></button>
+      <a class="btn" id="logout" href="/logout" title="이 브라우저의 로그인을 끝낸다">로그아웃</a>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div id="copyinfo"></div>
+  <div id="alerts"></div>
+  <div id="arch"></div>
+  <div class="tiles" id="tiles" aria-label="요약"></div>
+  <div class="overview">
+    <div class="glass sites" id="sites" aria-label="site 별 소식"></div>
+    <div class="glass cmp" id="cmp" aria-label="묶음별 최고 LB 와 최고 grouped CV"></div>
+  </div>
+  <div id="summary"></div>
+
+  <section id="sec-subs">
+    <h2>제출 <small id="subs-note">LB 높은 순 · 모든 묶음 · board lb 로 적은 것</small></h2>
+    <div class="subs-grid">
+      <div class="glass tw wide-scroll"><table class="lbt" id="subs"></table></div>
+      <div class="glass sc" id="scatter"></div>
+    </div>
+  </section>
+
+  <section id="sec-cvtop">
+    <h2>CV 상위 <small id="cvtop-note">grouped CV 높은 순, 바로 옆에 LB</small></h2>
+    <div class="glass tw wide-scroll"><table class="lbt" id="cvtop"></table><div class="morebar" id="cv-more"></div></div>
+  </section>
+
+  <section id="sec-tasks">
+    <h2>작업 <small id="tasks-note"></small></h2>
+    <div class="glass cols" id="cols"></div>
+  </section>
+
+  <section id="sec-plan">
+    <h2>계획 <small>plan/*.md, agent별 계획</small></h2>
+    <div class="glass docs" id="plans"></div>
+  </section>
+
+  <section id="sec-results">
+    <h2>결과 <small>results.tsv</small></h2>
+    <div class="filters">
+      <label>agent <select id="r-agent"></select></label>
+      <label>작업 <select id="r-task"></select></label>
+      <span class="count" id="r-count"></span>
+    </div>
+    <div class="glass chart" id="chart">
+      <div class="legend" id="legend"></div>
+      <div id="plot"></div>
+      <div class="tip" id="tip"></div>
+    </div>
+    <div class="glass scroll"><table class="results" id="rtable"></table></div>
+  </section>
+
+  <section id="sec-log">
+    <h2>기록 <small>log/*.md, 최근 것이 위</small></h2>
+    <div class="filters">
+      <label>agent <select id="l-agent"></select></label>
+      <button class="chip" type="button" data-tag="LESSON" aria-pressed="false">LESSON</button>
+      <button class="chip" type="button" data-tag="CANDIDATE" aria-pressed="false">CANDIDATE</button>
+      <button class="chip" type="button" data-tag="HANDOFF" aria-pressed="false">HANDOFF</button>
+      <input type="search" id="l-q" placeholder="글자 검색" aria-label="기록 검색">
+      <span class="count" id="l-count"></span>
+    </div>
+    <div class="glass"><ul class="list" id="log"></ul><div class="morebar" id="l-more"></div></div>
+  </section>
+
+  <section id="sec-qna">
+    <h2>질문과 답 <small>questions.md, 최근 것이 위</small></h2>
+    <div class="glass"><ul class="list" id="qna"></ul></div>
+  </section>
+
+  <section id="sec-test" aria-label="test 구조">
+    <h2>test 구조 <small>알아낸 숨은 test 의 사실 · 모든 site · board fact 로 적는다 (웹은 읽기만)</small></h2>
+    <div class="glass tfig" id="tfig"></div>
+    <div id="tfacts"></div>
+  </section>
+
+  <section id="sec-lessons" aria-label="실험 교훈">
+    <h2>실험 교훈 <small>지금까지의 실험을 종류별로 모은 교훈 · 모든 site · board lesson 으로 적는다 (웹은 읽기만)</small></h2>
+    <div class="glass ldash" id="ldash"></div>
+    <div id="lcards"></div>
+  </section>
+
+  <footer>읽기 전용 · 30초마다 자동 갱신 · 시각은 서버 시각 · 묶음은 URL 의 ?try= 로 고른다</footer>
+</main>
+
+<script nonce="VlSiE0fv5sPZax3CPPWnxQ">
+'use strict';
+const $ = (s) => document.querySelector(s);
+const ESC = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ESC[c]);
+const STATES = ['열림', '진행', '대기', '막힘', '완료'];
+const ST_CLASS = { '열림': 'open', '진행': 'prog', '대기': 'wait', '막힘': 'block', '완료': 'done' };
+const STATIC = 'static' === 'static';   // board web --export 로 만든 암호화 사본 (github.io 등). 서버 판에서는 false
+const REFRESH_MS = STATIC ? 60000 : 30000;
+const LOG_PAGE = 150;
+
+let TRY = (() => {             // URL 의 ?try= (서버가 있는 묶음 이름인지 검사한다). 정적 사본은 탭 안에만 둔다
+  let v = null;
+  if (STATIC) { try { v = sessionStorage.getItem('ntb-try'); } catch (e) {} } else v = new URLSearchParams(location.search).get('try');
+  return v && /^[A-Za-z0-9._-]{1,64}$/.test(v) ? v : '';
+})();
+let RAW = null;               // 마지막으로 받은 스냅숏 (모든 site)
+let D = null;                 // 화면에 쓰는 것 (site 고르기를 적용한 것)
+let fail = null;              // 마지막 갱신 실패 사유
+let lastTry = 0;
+let agentIdx = {};
+const sig = {};               // 구획별 마지막 그린 내용 (같으면 다시 그리지 않는다)
+const ui = {
+  openTasks: new Set(), shut: new Set(), openLessons: new Set(),
+  sort: { k: 0, d: -1 }, rAgent: '', rTask: '', zoom: false,
+  lAgent: '', lTags: new Set(), lQ: '', lLimit: LOG_PAGE, openLogs: new Set(),
+  sumOpen: false, openPlans: new Set(), cvLimit: 10, openMemos: new Set(), view: 'board',
+  site: (() => { try { return localStorage.getItem('board-site') || ''; } catch (e) { return ''; } })(),
+};
+(() => {                      // 접은 작업 열. 처음에는 '완료'를 접어 둔다
+  let s = null;
+  try { s = JSON.parse(localStorage.getItem('board-shut') || 'null'); } catch (e) {}
+  (Array.isArray(s) ? s : ['완료']).forEach((x) => ui.shut.add(x));
+})();
+
+function changed(key, value) {
+  const s = typeof value === 'string' ? value : JSON.stringify(value);
+  if (sig[key] === s) return false;
+  sig[key] = s;
+  return true;
+}
+const ac = (a) => { const i = agentIdx[a]; return i != null && i < 8 ? 'c' + (i + 1) : 'c0'; };
+const who = (a) => `<span class="who"><i class="dot ${ac(a)}"></i>${esc(a)}</span>`;
+const shortT = (t) => (t || '').slice(5);                       // MM-DD HH:MM
+const rn = (s) => `<span class="runname">${esc(s).replace(/_/g, '_<wbr>')}</span>`;   // 실행 이름: 밑줄에서만 줄을 바꾼다
+const hhmm = (t) => { const m = /(\d\d:\d\d)/.exec(t || ''); return m ? m[1] : ''; };
+
+/* ------------------------------------------------------------ LB 표시 */
+const f4 = (v) => (v == null || isNaN(v) ? '—' : (+v).toFixed(4));
+const gapTxt = (g) => (g == null ? '—' : (g >= 0 ? '+' : '−') + Math.abs(g).toFixed(3));
+function lbNum(i) { return i && i.score != null ? i.score : NaN; }
+function isFlag(cv, score) {                  // 최고 LB 제출보다 CV 는 높은데 LB 는 낮다
+  const A = RAW && RAW.anchor;
+  return !!(A && A.cv != null && !isNaN(cv) && !isNaN(score) && cv > A.cv + (A.tol || 0) && score < num(A.lb) - 1e-9);
+}
+function flagBadge() {
+  const A = RAW.anchor;
+  return ` <span class="badge flag" title="최고 LB 제출(${esc(A.run)}, LB ${esc(A.lb)}, CV ${esc(f4(A.cv))})보다 CV 는 ${A.tol || 0} 넘게 높은데 LB 는 낮다. 이 CV 는 LB 를 따라가지 않는다">⚠<span class="fl-t"> CV↑ LB↓</span></span>`;
+}
+function lbCell(i, short) {
+  if (!i) return '<span class="badge none">미제출</span>';
+  let h = i.score == null ? '<span class="badge wait">채점 중</span>' : `<b>${esc(i.lb)}</b>`;
+  if (i.via) h += ` <span class="badge via" title="이 실행은 제출하지 않았고, 같은 방법을 ${esc(i.via)} 로 제출했다">${short ? '대표 제출' : `<span class="via-l">${esc(i.via)}로 제출</span><span class="via-s">대표 제출</span>`}</span>`;
+  if (i.src === 'memo') h += ' <span class="badge memo-src" title="board lb 기록이 없어 결과 메모의 LB 문구에서 읽었다">메모에서 읽음</span>';
+  return h;
+}
+function lbText(i) {          // 타일·요약용 한 줄
+  if (!i) return 'LB 미제출';
+  if (i.score == null) return 'LB 채점 중' + (i.via ? ` (${i.via}로 제출)` : '');
+  return `LB ${i.lb}` + (i.via ? ` (${i.via}로 제출)` : '') + (i.src === 'memo' ? ' · 메모에서 읽음' : '');
+}
+function bestCv(rows, needLb) {
+  let b = null;
+  for (const r of rows) {
+    if (r[8]) continue;
+    if (needLb && !(r[9] && r[9].score != null)) continue;
+    const v = num(r[4]);
+    if (!isNaN(v) && (!b || v > b.v)) b = { v, r };
+  }
+  return b;
+}
+function bestSub(subs) { return subs.find((x) => x.score != null && !x.excluded) || null; }
+
+/* ------------------------------------------------------------ 메모: 두세 줄에서 자르고 누르면 펼친다 */
+const AUX_RE = /^((?:\S+가 )?옮겨 적음(?: \([^)]*\))?\.?)\s*/;   // '옮겨 적음 (…)' 같은 딸린 정보는 옅게
+function memoHtml(text, key, notes) {
+  text = text || '';
+  const m = AUX_RE.exec(text);
+  const aux = (notes || []).concat(m ? [esc(m[1])] : []);
+  const body = m ? text.slice(m[0].length) : text;
+  if (!aux.length && !body) return '';
+  const open = ui.openMemos.has(key);
+  return `<div class="mt${open ? ' open' : ''}" data-mk="${esc(key)}">${aux.length ? `<span class="aux">${aux.join(' · ')}</span> ` : ''}${esc(body)}</div>`
+    + `<button class="more" type="button" data-mk="${esc(key)}">${open ? '접기' : '펼치기'}</button>`;
+}
+function fitMemos(root) {     // 잘린 메모에만 '펼치기'
+  (root || document).querySelectorAll('.mt[data-mk]').forEach((el) => {
+    const td = el.parentElement, open = el.classList.contains('open');
+    td.classList.toggle('opened', open);
+    td.classList.toggle('cut', !open && el.scrollHeight > el.clientHeight + 2);
+  });
+}
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('.mt[data-mk], .more[data-mk]');
+  if (!t) return;
+  const td = t.parentElement;
+  if (!td.classList.contains('cut') && !td.classList.contains('opened')) return;
+  if (t.classList.contains('mt') && getSelection && String(getSelection()).length) return;   // 글자를 고르는 중
+  const k = t.dataset.mk, mt = td.querySelector('.mt'), btn = td.querySelector('.more');
+  const open = !mt.classList.contains('open');
+  open ? ui.openMemos.add(k) : ui.openMemos.delete(k);
+  mt.classList.toggle('open', open);
+  if (btn) btn.textContent = open ? '접기' : '펼치기';
+  fitMemos(td);
+});
+
+/* ------------------------------------------------------------ 요약 */
+function renderTiles() {
+  const c = D.counts, total = D.tasks.length;
+  const L = bestSub(D.submissions), b = bestCv(D.results.rows), bl = bestCv(D.results.rows, true);
+  const nWait = D.submissions.filter((x) => x.score == null).length;
+  const cvFlag = b && b.r[9] && isFlag(b.v, lbNum(b.r[9]));
+  const prog = D.tasks.filter((t) => t.state === '진행');
+  const progIds = prog.map((t) => `<span class="badge t" title="${esc(t.title)}${t.owner ? ' · ' + esc(t.owner) : ''}">${esc(t.id)}</span>`).join('');
+  const locksHtml = D.archived ? '' : (RAW.sites || []).map((x) => {
+    const g = parseLock(x.gpu);
+    return `<div title="${esc(x.site)} 의 GPU 잠금"><span class="badge lock">GPU</span> ${g ? `${esc(g.agent)} · <span class="mono">${esc(g.task)}</span>${hhmm(g.since) ? ' · ' + esc(hhmm(g.since)) + '부터' : ''}` : '<span class="note">비어 있음</span>'} <span class="note">${esc(x.site)}</span></div>`;
+  }).join('');
+  const html = `
+    <div class="glass tile best">
+      <div class="lab">최고 LB <span class="note">모든 묶음${ui.site ? ' · ' + esc(ui.site) : ''}</span></div>
+      <div class="num">${L ? esc(L.lb) : '—'}</div>
+      <div class="sub mono" title="${L ? esc(L.run) : ''}">${L ? esc(L.run) : '아직 제출 기록 없음'}</div>
+      <div class="sub">${L ? `CV ${esc(f4(L.cv))} · CV−LB ${esc(gapTxt(L.gap))} · ${esc(L.label)}` : '제출하면 board lb 로 적는다'}${nWait ? ` · 채점 중 ${nWait}건` : ''}</div>
+    </div>
+    <div class="glass tile">
+      <div class="lab">${D.archived ? esc(D.try) + ' 최고 grouped CV' : '지금 최고 grouped CV'}</div>
+      <div class="num">${b ? esc(b.r[4]) : '—'}</div>
+      <div class="sub mono" title="${b ? esc(b.r[2]) : ''}">${b ? esc(b.r[2]) : '결과 없음'}</div>
+      <div class="sub" title="${b && bl && bl.r !== b.r ? 'LB 있는 실행 중 최고 CV ' + esc(bl.r[4]) + ' ' + esc(bl.r[2]) + ' · ' + esc(lbText(bl.r[9])) : ''}">${b ? esc(lbText(b.r[9])) + (cvFlag ? flagBadge() : '') : ''}${b && bl && bl.r !== b.r ? ` · LB 있는 것 중 최고 ${esc(bl.r[4])}` : ''}${D.results.excluded ? ` · 통계 제외 ${D.results.excluded}행 뺌` : ''}</div>
+    </div>
+    <div class="glass tile progt">
+      <div class="lab">진행 중인 작업 · GPU 잠금${D.archived ? ' <span class="note">보관 묶음</span>' : ''}</div>
+      <div class="num">${c['진행']}<small>/ 전체 ${total}</small></div>
+      <div class="sub">열림 ${c['열림']} · 대기 ${c['대기']} · 막힘 ${c['막힘']} · 완료 ${c['완료']}${D.archived ? ` · 결과 ${D.results.rows.length}행` : ''}</div>
+      ${progIds ? `<div class="prog-ids">${progIds}</div>` : ''}
+      ${locksHtml ? `<div class="locks">${locksHtml}</div>` : ''}
+    </div>`;
+  if (changed('tiles', html)) $('#tiles').innerHTML = html;
+}
+
+/* ------------------------------------------------------------ 제출 (LB 높은 순) */
+function clip(t, n) { t = t || ''; return t.length > n ? t.slice(0, n) + '…' : t; }
+function renderSubs() {
+  const subs = D.submissions;
+  if (!changed('subs', [subs, RAW.anchor, D.agents])) return;
+  const top = bestSub(subs);
+  const nWait = subs.filter((x) => x.score == null).length;
+  $('#subs-note').textContent = `LB 높은 순 · 모든 묶음${ui.site ? ' · site ' + ui.site + ' 만' : ''} · ${subs.length}건${nWait ? ', 채점 중 ' + nWait + '건은 뒤에' : ''}`;
+  let rank = 0;
+  const body = subs.map((x) => {
+    const scored = x.score != null;
+    if (scored) rank += 1;
+    const cls = [x === top ? 'top' : '', !scored ? 'wait' : '', x.flag ? 'flag' : '', x.excluded ? 'excl' : ''].filter(Boolean).join(' ');
+    const lb = scored ? esc(x.lb) + (x === top ? ' <span class="badge top">최고</span>' : '') : '<span class="badge wait">채점 중</span>';
+    const src = x.src === 'memo' ? ' <span class="badge memo-src" title="board lb 기록이 없어 결과 메모에서 읽었다">메모에서 읽음</span>' : '';
+    const cvT = x.cv_src === '제출 기록' ? ' title="결과 행의 CV 대신 제출 기록(board lb --cv)의 CV"' : '';
+    const meta = `${esc(x.site)} · ${esc(x.agent || '-')} · ${esc(shortT(x.t))}${x.ref ? ' · ' + esc(x.ref) : ''}`;
+    const notes = [];
+    if (x.also && x.also.length) notes.push(`대표: <span class="mono">${esc(x.also.join(', '))}</span>`);
+    if (x.src === 'lb' && x.writer && x.writer !== x.agent) notes.push(`적은 이 ${esc(x.writer)}`);
+    if (x.excluded) notes.push('<span class="badge excl">통계 제외</span>');
+    return `<tr${cls ? ` class="${cls}"` : ''}><td class="rk">${scored ? rank : ''}</td><td class="num-c big" data-l="LB">${lb}${src}</td>
+      <td class="num-c sec" data-l="CV"${cvT}>${esc(f4(x.cv))}${x.cv_src === '제출 기록' ? '<sup>*</sup>' : ''}</td><td class="num-c wide">${esc(gapTxt(x.gap))}${x.flag ? flagBadge() : ''}</td><td class="gapc" data-l="CV−LB">${esc(gapTxt(x.gap))}${x.flag ? flagBadge() : ''}</td>
+      <td class="run"><span class="badge t">${esc(x.task)}</span> ${rn(x.run)}${x.archived ? ` <span class="badge site">${esc(x.label)}</span>` : ''}<span class="narrow">${meta}</span></td>
+      <td class="wide who-c">${esc(x.site)}<br>${x.agent ? who(x.agent) : ''}<span class="w2"><br>${esc(shortT(x.t))}${x.ref ? ' · ' + esc(x.ref) : ''}</span></td><td class="t wide wide2">${esc(shortT(x.t))}</td><td class="ref wide wide2">${esc(x.ref || '-')}</td>
+      <td class="memo">${memoHtml(x.memo, 's|' + x.run + '|' + x.t, notes)}</td></tr>`;
+  }).join('');
+  const star = subs.some((x) => x.cv_src === '제출 기록') ? ' · <sup>*</sup> 결과 행의 CV 대신 제출 기록의 CV (예: s0 대리)' : '';
+  $('#subs').innerHTML = `<thead><tr><th class="num-c">#</th><th class="num-c">LB</th><th class="num-c">그 CV</th><th class="num-c wide">CV−LB</th><th>작업 · 실행</th>
+    <th class="wide">site · agent</th><th class="wide wide2">제출 시각</th><th class="wide wide2">제출 번호</th><th class="memo">메모</th></tr></thead>
+    <tbody>${body || '<tr><td colspan="9" class="empty">아직 제출 기록이 없다. 제출하면 board lb &lt;이름&gt; &lt;작업&gt; &lt;실행&gt; pending --ref &lt;제출 번호&gt;</td></tr>'}</tbody>
+    ${body ? `<tfoot><tr><td colspan="9" class="note">CV−LB 는 grouped CV − public LB${star}</td></tr></tfoot>` : ''}`;
+  fitMemos($('#subs'));
+  drawScatter(subs.filter((x) => x.score != null && x.cv != null), top);
+}
+function drawScatter(pts0, top) {
+  const el = $('#scatter');
+  const A = RAW.anchor;
+  if (pts0.length < 2) { el.innerHTML = '<h3>CV 대 LB</h3><div class="empty">점이 둘 이상이면 그린다</div>'; return; }
+  const W = 280, H = 230, m = { l: 40, r: 10, t: 10, b: 30 };
+  const xs = pts0.map((x) => x.cv), ys = pts0.map((x) => x.score);
+  let x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const px = Math.max(0.01, (x1 - x0) * 0.08), py = Math.max(0.005, (y1 - y0) * 0.1);
+  x0 -= px; x1 += px; y0 -= py; y1 += py;
+  const X = (v) => m.l + ((v - x0) / (x1 - x0)) * (W - m.l - m.r), Y = (v) => H - m.b - ((v - y0) / (y1 - y0)) * (H - m.t - m.b);
+  let s = '';
+  const xstep = niceStep(x1 - x0, 4), ystep = niceStep(y1 - y0, 4);
+  for (let v = Math.ceil(x0 / xstep) * xstep; v <= x1; v += xstep) s += `<line class="grid" x1="${X(v)}" x2="${X(v)}" y1="${m.t}" y2="${H - m.b}"/><text x="${X(v)}" y="${H - m.b + 14}" text-anchor="middle">${v.toFixed(xstep < 0.01 ? 3 : 2)}</text>`;
+  for (let v = Math.ceil(y0 / ystep) * ystep; v <= y1; v += ystep) s += `<line class="grid" x1="${m.l}" x2="${W - m.r}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${m.l - 5}" y="${Y(v) + 4}" text-anchor="end">${v.toFixed(ystep < 0.01 ? 3 : 2)}</text>`;
+  s += `<text x="${(m.l + W - m.r) / 2}" y="${H - 3}" text-anchor="middle">grouped CV →</text><text x="11" y="${m.t + 8}" text-anchor="start">LB</text>`;
+  if (A && A.cv != null) s += `<line class="diag" x1="${X(A.cv)}" x2="${X(A.cv)}" y1="${m.t}" y2="${H - m.b}"/><line class="diag" x1="${m.l}" x2="${W - m.r}" y1="${Y(num(A.lb))}" y2="${Y(num(A.lb))}"/>`;
+  const rk = new Map(); let n = 0; D.submissions.forEach((x) => { if (x.score != null) rk.set(x, ++n); });
+  s += pts0.map((x, i) => {
+    const cls = x === top ? ' top' : x.flag ? ' flag' : '';
+    const ty = i % 2 ? Y(x.score) + 13 : Y(x.score) - 6;
+    return `<circle class="sc-pt${cls}" cx="${X(x.cv).toFixed(1)}" cy="${Y(x.score).toFixed(1)}" r="5"><title>${esc(x.run)}: CV ${f4(x.cv)}, LB ${esc(x.lb)}</title></circle><text class="sc-n" x="${(X(x.cv) + 7).toFixed(1)}" y="${ty.toFixed(1)}">${rk.get(x) || ''}</text>`;
+  }).join('');
+  el.innerHTML = `<h3>CV 대 LB <span class="note">점 번호 = 표의 #</span></h3><svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="제출의 grouped CV 대 LB. 값은 옆 표에 있다.">${s}</svg>
+    <div class="note">점선: 최고 LB 제출${A ? ` (${esc(A.run)})` : ''}. 초록 = 최고 LB, 주황 = CV 는 더 높은데 LB 는 낮다</div>`;
+}
+
+/* ------------------------------------------------------------ CV 상위 (옆에 LB) */
+function renderCvTop() {
+  const rows = D.results.rows.map((r, i) => ({ r, i, cv: r[8] ? NaN : num(r[4]) })).filter((o) => !isNaN(o.cv))
+    .sort((a, b) => b.cv - a.cv || a.i - b.i);
+  if (!changed('cvtop', [D.results, RAW.anchor, D.agents, ui.cvLimit])) return;
+  const nx = D.results.rows.filter((r) => r[8]).length;
+  $('#cvtop-note').textContent = `grouped CV 높은 순, 바로 옆에 LB · ${D.archived ? D.try : '지금 묶음'}${ui.site ? ' · site ' + ui.site : ''} · ${rows.length}행${nx ? ' (통계 제외 ' + nx + '행 뺌)' : ''}`;
+  const body = rows.slice(0, ui.cvLimit).map((o, k) => {
+    const r = o.r, i = r[9], sc = lbNum(i), fl = isFlag(o.cv, sc);
+    const gap = isNaN(sc) ? null : o.cv - sc;
+    return `<tr${fl ? ' class="flag"' : ''}><td class="rk">${k + 1}</td><td class="num-c big" data-l="CV">${esc(r[4])}</td><td class="num-c sec" data-l="LB">${lbCell(i, false)}${fl ? flagBadge() : ''}</td>
+      <td class="num-c wide">${esc(gapTxt(gap))}</td>${gap == null ? '' : `<td class="gapc" data-l="CV−LB">${esc(gapTxt(gap))}</td>`}<td class="run"><span class="badge t">${esc(r[1])}</span> ${rn(r[2])}<span class="narrow">${esc(r[7])} · ${esc(r[5])} · ${esc(shortT(r[0]))}</span></td>
+      <td class="wide who-c">${esc(r[7])}<br>${who(r[5])}<span class="w2"><br>${esc(shortT(r[0]))}</span></td><td class="t wide wide2">${esc(shortT(r[0]))}</td><td class="memo">${memoHtml(r[6], 'c|' + r[2] + '|' + r[0])}</td></tr>`;
+  }).join('');
+  $('#cvtop').innerHTML = `<thead><tr><th class="num-c">#</th><th class="num-c">grouped CV</th><th class="num-c">LB</th><th class="num-c wide">CV−LB</th><th>작업 · 실행</th>
+    <th class="wide">site · agent</th><th class="wide wide2">시각</th><th class="memo">메모</th></tr></thead><tbody>${body || '<tr><td colspan="8" class="empty">grouped CV 값이 있는 결과가 없다</td></tr>'}</tbody>`;
+  $('#cv-more').innerHTML = rows.length > ui.cvLimit ? `<button class="btn" type="button" id="cv-morebtn">더 보기 (${rows.length - ui.cvLimit}행 남음)</button>` : '';
+  $('#cv-more').style.display = rows.length > ui.cvLimit ? '' : 'none';
+  fitMemos($('#cvtop'));
+}
+$('#cv-more').addEventListener('click', (e) => { if (e.target.id === 'cv-morebtn') { ui.cvLimit += 20; renderCvTop(); } });
+
+/* ------------------------------------------------------------ 묶음 */
+function tryLabel(t) { return t.archived ? t.name : `${t.name} (지금)`; }
+function tryHref(t) { return STATIC ? '#' : `?try=${encodeURIComponent(t.name)}`; }   // 정적 사본: 묶음 이름을 주소에 싣지 않는다
+function renderTries() {
+  const seen = new Set(), chips = D.tries.filter((t) => !seen.has(t.name) && seen.add(t.name));   // 지금 묶음은 site 별로 여러 줄
+  const html = chips.map((t) =>
+    `<a href="${esc(tryHref(t))}" data-try="${esc(t.name)}"${t.name === D.try ? ' aria-current="page"' : ''}>${esc(tryLabel(t))}</a>`).join('');
+  if (changed('tries', html)) {
+    $('#tries').innerHTML = html;
+    $('#try-f').innerHTML = chips.map((t) => `<option value="${esc(t.name)}"${t.name === D.try ? ' selected' : ''}>${esc(tryLabel(t))}</option>`).join('');
+  }
+  $('#try-f').value = D.try;
+
+  const ts = D.tries.filter((t) => !t.archived && t.own).concat(D.tries.filter((t) => !t.archived && !t.own), D.tries.filter((t) => t.archived))
+    .filter((t) => !ui.site || !t.site || t.site === ui.site || t.archived);
+  const rows = ts.map((t) => {
+    const b = t.best, l = t.best_lb;
+    const name = t.archived ? t.name : t.own ? `${t.name} (지금)` : `${t.site}${t.batch ? ' · ' + t.batch : ''} (지금)`;   // 다른 site: 그 site 의 묶음
+    const lbPart = l ? `<span class="big num">${esc(l.lb)}</span><span class="sub2">${rn(l.run)} · CV ${esc(f4(l.cv))}</span>` : '<span class="note">없음</span>';
+    const cvPart = b ? `<span class="big num">${esc(b.cv)}</span><span class="sub2">${rn(b.run)} · ${esc(lbText(b.lbi))}</span>` : `<span class="note">CV 결과 없음 (${t.n}행)</span>`;
+    const cur = t.name === D.try && (t.archived || t.own);
+    return `<tr${cur ? ' class="cur"' : ''}><td class="nm">${esc(name)}</td><td class="lbcol">${lbPart}</td><td class="cvcol">${cvPart}</td></tr>`;
+  }).join('');
+  const cmp = `<table class="cmpt"><thead><tr><th>묶음</th><th>최고 LB · 그 실행과 CV</th><th>최고 CV · 그 실행과 LB</th></tr></thead><tbody>${rows || '<tr><td colspan="3" class="empty">묶음 없음</td></tr>'}</tbody></table>`;
+  if (changed('cmp', cmp)) $('#cmp').innerHTML = cmp;
+
+  const arch = D.archived
+    ? `<div class="banner warn archived">보관된 묶음 ${esc(D.try)} · 기록만 보인다 (더 쓰지 않음). 잠금은 지금 묶음 화면에서 본다.</div>` : '';
+  if (changed('arch', arch)) $('#arch').innerHTML = arch;
+  const sum = D.summary
+    ? `<details class="glass doc"${ui.sumOpen ? ' open' : ''} id="sum-d"><summary>${esc(D.try)} 요약 <span class="note">SUMMARY.md · 눌러서 펼치기</span></summary><div class="md">${mdLite(D.summary)}</div></details>` : '';
+  if (changed('summary', sum)) $('#summary').innerHTML = sum;
+
+  document.title = `실험 board · ${D.try || ''}`;
+  $('#sec-plan').hidden = $('#nav-plan').hidden = !!D.archived;
+}
+$('#try-f').addEventListener('change', (e) => {   // 휴대폰의 묶음 고르기 (넓은 화면의 묶음 단추와 같다)
+  const a = document.querySelector(`#tries a[data-try="${CSS.escape(e.target.value)}"]`);
+  if (a) a.click();
+});
+$('#summary').addEventListener('toggle', (e) => { if (e.target.id === 'sum-d') ui.sumOpen = e.target.open; }, true);
+function renderPlans() {
+  if (D.archived || !changed('plans', D.plans)) return;
+  $('#plans').innerHTML = D.plans.length ? D.plans.map((p) =>
+    `<details class="doc" data-name="${esc(p.name)}"${ui.openPlans.has(p.name) ? ' open' : ''}><summary>${esc(p.name)} <span class="note">${esc(p.mtime)} 고침</span></summary><div class="md">${mdLite(p.body)}</div></details>`).join('')
+    : '<div class="empty">아직 계획 파일이 없다</div>';
+}
+$('#plans').addEventListener('toggle', (e) => {
+  const d = e.target; if (!d.dataset || !d.dataset.name) return;
+  d.open ? ui.openPlans.add(d.dataset.name) : ui.openPlans.delete(d.dataset.name);
+}, true);
+
+/* ------------------------------------------------------------ 작업 */
+function inline(s) {
+  return esc(s).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+}
+function mdLite(text) {
+  const out = []; let code = null;
+  for (const line of text.split('\n')) {
+    if (/^\s*```/.test(line)) {
+      if (code) { out.push('<pre>' + esc(code.join('\n')) + '</pre>'); code = null; } else code = [];
+      continue;
+    }
+    if (code) { code.push(line); continue; }
+    if (/^\s*\|.*\|\s*$/.test(line)) {
+      if (/^\s*\|[\s:|-]+\|\s*$/.test(line)) continue;            // 구분 줄
+      const cells = line.trim().slice(1, -1).split('|').map((c) => '<td>' + inline(c.trim()) + '</td>').join('');
+      if (out.length && out[out.length - 1].startsWith('<table>')) out[out.length - 1] = out[out.length - 1].replace('</table>', '<tr>' + cells + '</tr></table>');
+      else out.push('<table><tr>' + cells + '</tr></table>');
+      continue;
+    }
+    if (!line.trim()) out.push('<div class="gap"></div>');
+    else if (/^#{1,6}\s/.test(line)) out.push('<div class="h">' + inline(line.replace(/^#+\s*/, '')) + '</div>');
+    else if (/^\s*([-*]|\d+\.)\s/.test(line)) out.push('<div class="li">' + inline(line.trim()) + '</div>');
+    else out.push('<div>' + inline(line) + '</div>');
+  }
+  if (code) out.push('<pre>' + esc(code.join('\n')) + '</pre>');
+  return out.join('');
+}
+function resClass(r) { return /^gpu/i.test(r) ? 'gpu' : /^ram/i.test(r) ? 'ram' : ''; }
+function parseLock(s) {       // "agent / 작업 / 시각 부터 / 명령" (site 소식의 잠금 보유자). 명령은 화면에 내지 않는다
+  if (!s) return null;
+  const p = String(s).split(' / ');
+  return { agent: p[0] || '', task: p[1] || '', since: p[2] || '' };
+}
+function heldLocks() {        // 작업 ID → ['GPU', 'RAM'] (모든 site 의 잠금 보유자)
+  const m = {};
+  const add = (k, l) => { if (l && l.task) (m[l.task] = m[l.task] || []).includes(k) || m[l.task].push(k); };
+  (RAW.sites || []).forEach((x) => { add('GPU', parseLock(x.gpu)); add('RAM', parseLock(x.ram)); });
+  if (D.locks) { add('GPU', D.locks.gpu); add('RAM', D.locks.ram); }
+  return m;
+}
+function cardHtml(t, held) {
+  const open = ui.openTasks.has(t.id);
+  const locks = held[t.id] || [];
+  let body = '';
+  if (open) {
+    const kv = [];
+    if (t.owner) kv.push(`<p class="kv"><b>담당</b> ${esc(t.owner)}${t.since ? ' · ' + esc(t.since) + ' 부터' : ''}</p>`);
+    if (t.res_full) kv.push(`<p class="kv"><b>자원</b> ${inline(t.res_full)}</p>`);
+    if (t.state === '대기') kv.push(`<p class="kv"><b>기다리는 선행 작업</b> ${esc(t.waiting.join(', '))}</p>`);
+    if (t.state === '막힘' && t.blocked) kv.push(`<p class="kv"><b>막힘</b> ${inline(t.blocked)}</p>`);
+    if (t.stale) kv.push(`<p class="kv"><b>멈춤?</b> 담당의 마지막 기록 ${esc(t.last || '-')}. 넘겨받으려면 board takeover ${esc(t.id)} &lt;이름&gt;</p>`);
+    if (t.takeover) kv.push(`<p class="kv"><b>넘겨받기 요청</b> ${esc(t.takeover)}</p>`);
+    if (t.done) kv.push(`<div class="sum"><b>완료 요약</b> ${inline(t.done)}</div>`);
+    const rest = t.body.replace(/^#[^\n]*\n?/, '');   // 첫 줄(제목)은 카드에 이미 있다
+    body = `<div class="card-b">${kv.join('')}<div class="md">${mdLite(rest)}</div></div>`;
+  }
+  return `<div class="sheet card">
+    <button class="card-h" type="button" data-id="${esc(t.id)}" aria-expanded="${open}">
+      <span class="l1"><span class="tid">${esc(t.id)}</span><span class="badge site">${esc(t.site || '?')}</span>${t.stale ? `<span class="badge stale" title="담당의 마지막 기록 ${esc(t.last || '-')}. 넘겨받기는 board takeover">멈춤?</span>` : ''}${locks.map((k) => `<span class="badge lock">${k} 잠금 보유</span>`).join('')}</span>
+      <span class="ttl">${esc(t.title)}</span>
+      <span class="l3">${t.owner ? who(t.owner) : '<span class="note">담당 없음</span>'}<span class="badge ${resClass(t.res)}">${esc(t.res || '-')}</span></span>
+    </button>${body}</div>`;
+}
+function renderTasks(force) {
+  const held = heldLocks();
+  if (!changed('tasks', [D.tasks, held, D.agents]) && !force) return;
+  $('#tasks-note').textContent = `전체 ${D.tasks.length}개 · 카드를 누르면 작업 파일이 펼쳐진다`;
+  $('#cols').innerHTML = STATES.map((s) => {
+    const list = D.tasks.filter((t) => t.state === s);
+    const shut = ui.shut.has(s);
+    return `<div class="col ${ST_CLASS[s]}${shut ? ' shut' : ''}">
+      <button class="col-h" type="button" data-col="${s}" aria-expanded="${!shut}">
+        <i class="st ${ST_CLASS[s]}"></i>${s} <span class="n">${list.length}</span><span class="chev">${shut ? '펼치기' : '접기'}</span>
+      </button>
+      <div class="cards">${list.length ? list.map((t) => cardHtml(t, held)).join('') : '<div class="empty">없음</div>'}</div>
+    </div>`;
+  }).join('');
+}
+$('#cols').addEventListener('click', (e) => {
+  const col = e.target.closest('.col-h'), card = e.target.closest('.card-h');
+  if (col) {
+    const s = col.dataset.col;
+    ui.shut.has(s) ? ui.shut.delete(s) : ui.shut.add(s);
+    try { localStorage.setItem('board-shut', JSON.stringify([...ui.shut])); } catch (err) {}
+    renderTasks(true);
+  } else if (card) {
+    const id = card.dataset.id;
+    ui.openTasks.has(id) ? ui.openTasks.delete(id) : ui.openTasks.add(id);
+    renderTasks(true);
+  }
+});
+
+/* ------------------------------------------------------------ 결과 */
+function fillSelect(sel, values, current, allLabel) {
+  if (changed('sel-' + sel.id, values)) {
+    sel.innerHTML = `<option value="">${allLabel}</option>` + values.map((v) => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
+  }
+  sel.value = values.includes(current) ? current : '';
+  return sel.value;
+}
+const num = (s) => {           // 0~1 수만 (.7213 도). parseFloat 는 '724_AAEM:…' 을 724 로 읽었다 (1.0.11)
+  const t = String(s == null ? '' : s).trim();
+  if (!/^(?:\d+\.?\d*|\.\d+)$/.test(t)) return NaN;
+  const v = +t;
+  return v >= 0 && v <= 1 ? v : NaN;
+};
+function resultRows() {
+  // 통계 제외 행(r[8] = 이유)은 표에는 남기고 최고값·차트에서는 뺀다
+  return D.results.rows.map((r, i) => ({ i, r, cv: r[8] ? NaN : num(r[4]) }))
+    .filter((o) => (!ui.rAgent || o.r[5] === ui.rAgent) && (!ui.rTask || o.r[1] === ui.rTask));
+}
+function renderResults(force) {
+  const rows0 = D.results.rows;
+  ui.rAgent = fillSelect($('#r-agent'), D.agents.filter((a) => rows0.some((r) => r[5] === a)), ui.rAgent, '전체');
+  ui.rTask = fillSelect($('#r-task'), [...new Set(rows0.map((r) => r[1]))], ui.rTask, '전체');
+  if (!changed('results', [D.results, D.agents, ui.rAgent, ui.rTask, ui.sort, ui.zoom]) && !force) return;
+  const rows = resultRows();
+  const nx = rows.filter((o) => o.r[8]).length;
+  $('#r-count').textContent = `${rows.length}건 / 전체 ${rows0.length}건` + (nx ? ` · 통계 제외 ${nx}건 (최고값·차트에서 뺌)` : '');
+  drawChart(rows);
+
+  const { k, d } = ui.sort, numeric = k === 3 || k === 4;
+  const sorted = rows.slice().sort((a, b) => {
+    let c = 0;
+    if (numeric) {
+      const x = num(a.r[k]), y = num(b.r[k]);
+      if (isNaN(x) !== isNaN(y)) return isNaN(x) ? 1 : -1;      // 값이 없는 줄은 늘 아래
+      c = isNaN(x) ? 0 : x - y;
+    } else c = a.r[k] < b.r[k] ? -1 : a.r[k] > b.r[k] ? 1 : 0;
+    return (c || a.i - b.i) * d;
+  });
+  const cols = D.results.cols.length ? D.results.cols : ['시각', '작업', '실행', 'pool만', 'groupedCV', 'agent', '메모'];
+  const best = rows.reduce((m, o) => (!isNaN(o.cv) && (m === null || o.cv > m.cv) ? o : m), null);
+  const head = cols.slice(0, 7).map((c, j) => {
+    const on = j === k;
+    return `<th${on ? ` aria-sort="${d > 0 ? 'ascending' : 'descending'}"` : ''}${j === 3 || j === 4 ? ' class="num-c"' : ''}><button type="button" data-k="${j}">${esc(c)}${on ? (d > 0 ? ' ▲' : ' ▼') : ''}</button></th>`;
+  }).join('');
+  const body = sorted.map((o) => {
+    const r = o.r;
+    const cls = best && o.i === best.i ? ' class="best"' : r[8] ? ` class="excl" title="통계 제외: ${esc(r[8])}"` : '';
+    const ex = [];
+    if (r[8]) ex.push(`<span class="badge excl">제외(${esc(r[8])})</span>`);
+    if (r[9]) ex.push(`<span class="badge lbb">${esc(lbText(r[9]))}</span>`);
+    return `<tr${cls}><td class="t">${esc(shortT(r[0]))}</td><td><span class="badge t">${esc(r[1])}</span></td>
+      <td class="run">${rn(r[2])}</td><td class="num-c">${esc(r[3])}</td><td class="num-c cv">${esc(r[4])}</td><td>${who(r[5])}</td><td class="memo">${memoHtml(r[6], 'r|' + r[2] + '|' + r[0], ex)}</td></tr>`;
+  }).join('');
+  $('#rtable').innerHTML = `<thead><tr>${head}</tr></thead><tbody>${body || '<tr><td colspan="7" class="empty">해당하는 결과가 없다</td></tr>'}</tbody>`;
+  fitMemos($('#rtable'));
+}
+$('#rtable').addEventListener('click', (e) => {
+  const b = e.target.closest('th button');
+  if (!b) return;
+  const k = +b.dataset.k;
+  ui.sort = ui.sort.k === k ? { k, d: -ui.sort.d } : { k, d: k === 3 || k === 4 || k === 0 ? -1 : 1 };
+  renderResults();
+});
+$('#r-agent').addEventListener('change', (e) => { ui.rAgent = e.target.value; renderResults(); });
+$('#r-task').addEventListener('change', (e) => { ui.rTask = e.target.value; renderResults(); });
+
+/* ------------------------------------------------------------ 차트 */
+let pts = [];
+function tms(t) {   // 'YYYY-MM-DD HH:MM' → ms (서버 시각을 그대로 쓰려고 UTC 로 다룬다)
+  const m = /^(\d+)-(\d+)-(\d+) (\d+):(\d+)/.exec(t || '');
+  return m ? Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) : NaN;
+}
+function ago(t, now) {        // 서버 시각끼리의 차이 → '방금' · 'N분 전' · 'N시간 전' · 'N일 전'
+  const a = tms(t), b = tms(now);
+  if (isNaN(a) || isNaN(b)) return t || '?';
+  const min = Math.max(0, Math.round((b - a) / 60000));
+  return min < 2 ? '방금' : min < 60 ? `${min}분 전` : min < 1440 ? `${Math.floor(min / 60)}시간 전` : `${Math.floor(min / 1440)}일 전`;
+}
+function niceStep(range, n) {
+  const raw = range / Math.max(1, n), p = Math.pow(10, Math.floor(Math.log10(raw)));
+  for (const m of [1, 2, 5, 10]) if (m * p >= raw) return m * p;
+  return 10 * p;
+}
+const p2 = (n) => String(n).padStart(2, '0');
+function drawChart(rows) {
+  const plot = $('#plot');
+  let data = rows.filter((o) => !isNaN(o.cv) && !isNaN(tms(o.r[0])));
+  // 같은 분에 적힌 결과는 그 1분 안에서 적힌 순서대로 펼친다
+  const per = {};
+  data.forEach((o) => { (per[o.r[0]] = per[o.r[0]] || []).push(o); });
+  data.forEach((o) => { const g = per[o.r[0]]; o.x = tms(o.r[0]) + (60000 * g.indexOf(o)) / g.length; });
+  data.sort((a, b) => a.x - b.x || a.i - b.i);
+  const top = data.reduce((m, o) => Math.max(m, o.cv), -Infinity);
+  const all = data.length;
+  if (ui.zoom) data = data.filter((o) => o.cv >= top - 0.1);
+  const agents = D.agents.filter((a) => data.some((o) => o.r[5] === a));
+  $('#legend').innerHTML = agents.map(who).join('') +
+    (data.length ? '<span><i class="ln"></i>지금까지의 최고점</span>' : '') +
+    (data.some((o) => o.r[9] && o.r[9].score != null) ? '<span><i class="sq"></i>LB 있는 실행</span>' : '') +
+    `<label><input type="checkbox" id="zoom"${ui.zoom ? ' checked' : ''}> 최고점 근처만 (−0.10 안)${ui.zoom && all > data.length ? ` · ${all - data.length}개 숨김` : ''}</label>`;
+  if (!data.length) { plot.innerHTML = '<div class="empty">그릴 grouped CV 값이 없다</div>'; pts = []; return; }
+
+  const W = Math.max(200, plot.clientWidth), H = W < 520 ? 230 : 290;
+  const m = { l: 40, r: 14, t: 16, b: 34 };
+  let x0 = data[0].x, x1 = data[data.length - 1].x;
+  if (x1 - x0 < 120000) { x0 -= 60000; x1 += 60000; }
+  const xp = (x1 - x0) * 0.02; x0 -= xp; x1 += xp;
+  let lo = Math.min(...data.map((o) => o.cv)), hi = top;
+  const ys = niceStep(Math.max(hi - lo, 0.02), 5);
+  lo = Math.floor((lo - ys * 0.15) / ys) * ys; hi = Math.ceil((hi + ys * 0.15) / ys) * ys;
+  const X = (v) => m.l + ((v - x0) / (x1 - x0)) * (W - m.l - m.r);
+  const Y = (v) => H - m.b - ((v - lo) / (hi - lo)) * (H - m.t - m.b);
+  const dec = ys < 0.01 ? 3 : 2;
+  let s = '';
+  for (let v = lo; v <= hi + 1e-9; v += ys) {
+    s += `<line class="grid" x1="${m.l}" x2="${W - m.r}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${m.l - 6}" y="${Y(v) + 4}" text-anchor="end">${v.toFixed(dec)}</text>`;
+  }
+  // 시간 눈금
+  const MIN = 60000, steps = [1, 2, 5, 10, 15, 30, 60, 120, 180, 360, 720, 1440, 2880, 10080];
+  const want = Math.max(2, Math.floor((W - m.l - m.r) / 84));
+  const xs = (steps.find((v) => (x1 - x0) / (v * MIN) <= want) || 20160) * MIN;
+  let prevDay = '';
+  for (let v = Math.ceil(x0 / xs) * xs; v <= x1; v += xs) {
+    const dt = new Date(v), day = `${p2(dt.getUTCMonth() + 1)}-${p2(dt.getUTCDate())}`;
+    s += `<line class="axis" x1="${X(v)}" x2="${X(v)}" y1="${H - m.b}" y2="${H - m.b + 4}"/>
+      <text x="${X(v)}" y="${H - m.b + 16}" text-anchor="middle">${xs >= 1440 * MIN ? day : p2(dt.getUTCHours()) + ':' + p2(dt.getUTCMinutes())}</text>`;
+    if (xs < 1440 * MIN && day !== prevDay) s += `<text x="${X(v)}" y="${H - m.b + 29}" text-anchor="middle">${day}</text>`;
+    prevDay = day;
+  }
+  s += `<line class="axis" x1="${m.l}" x2="${W - m.r}" y1="${H - m.b}" y2="${H - m.b}"/>`;
+  // 지금까지의 최고점 (계단선)
+  let best = -Infinity, path = '', bestPt = null;
+  for (const o of data) {
+    if (o.cv > best) {
+      path += path ? `H${X(o.x).toFixed(1)}V${Y(o.cv).toFixed(1)}` : `M${X(o.x).toFixed(1)},${Y(o.cv).toFixed(1)}`;
+      best = o.cv; bestPt = o;
+    }
+  }
+  path += `H${W - m.r}`;
+  s += `<path class="bestline" d="${path}"/>`;
+  pts = data.map((o) => ({ o, px: X(o.x), py: Y(o.cv) }));
+  s += pts.map((p) => `<circle class="pt ${ac(p.o.r[5])}" cx="${p.px.toFixed(1)}" cy="${p.py.toFixed(1)}" r="4.5"/>`).join('');
+  s += pts.filter((p) => p.o.r[9] && p.o.r[9].score != null).map((p) =>
+    `<rect class="lbmark" x="${(p.px - 6).toFixed(1)}" y="${(p.py - 6).toFixed(1)}" width="12" height="12" transform="rotate(45 ${p.px.toFixed(1)} ${p.py.toFixed(1)})"/>`).join('');
+  s += `<circle class="ring" cx="${X(bestPt.x).toFixed(1)}" cy="${Y(bestPt.cv).toFixed(1)}" r="8"/>`;
+  const lx = Math.min(W - m.r - 2, Math.max(m.l + 60, X(bestPt.x) - 12));
+  s += `<text class="bestlab" x="${lx}" y="${Math.max(11, Y(best) - 9)}" text-anchor="end">최고 ${esc(bestPt.r[4])}</text>`;
+  s += '<circle class="ring" id="hov" r="7.5" visibility="hidden"/>';
+  plot.innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" role="img" aria-label="grouped CV 시간순 차트. 값은 아래 표에 있다.">${s}</svg>`;
+}
+function hover(e) {
+  const svg = $('#plot svg'), tip = $('#tip');
+  if (!svg || !pts.length) return;
+  const box = svg.getBoundingClientRect(), mx = e.clientX - box.left, my = e.clientY - box.top;
+  let near = null, nd = 40 * 40;
+  for (const p of pts) { const d = (p.px - mx) ** 2 + (p.py - my) ** 2; if (d < nd) { nd = d; near = p; } }
+  const hov = svg.querySelector('#hov');
+  if (!near) { tip.style.display = 'none'; hov.setAttribute('visibility', 'hidden'); return; }
+  hov.setAttribute('cx', near.px); hov.setAttribute('cy', near.py); hov.setAttribute('visibility', 'visible');
+  const r = near.o.r, memo = r[6].length > 150 ? r[6].slice(0, 150) + '…' : r[6];
+  tip.innerHTML = `<div class="v">${esc(r[4])}${r[9] ? ` <span class="note">${esc(lbText(r[9]))}</span>` : ''}</div><div class="r">${esc(r[2])}</div>
+    <div>${who(r[5])} · ${esc(r[1])} · ${esc(shortT(r[0]))}</div><div class="m">${esc(memo)}</div>`;
+  tip.style.display = 'block';
+  const host = $('#chart').getBoundingClientRect(), tw = tip.offsetWidth, th = tip.offsetHeight;
+  let left = box.left - host.left + near.px + 14, topPx = box.top - host.top + near.py - th - 10;
+  if (left + tw > host.width - 6) left = box.left - host.left + near.px - tw - 14;
+  if (left < 6) left = 6;
+  if (topPx < 6) topPx = box.top - host.top + near.py + 14;
+  tip.style.left = left + 'px'; tip.style.top = topPx + 'px';
+}
+$('#plot').addEventListener('pointermove', hover);
+$('#plot').addEventListener('pointerdown', hover);
+$('#plot').addEventListener('pointerleave', () => {
+  $('#tip').style.display = 'none';
+  const h = $('#plot #hov'); if (h) h.setAttribute('visibility', 'hidden');
+});
+$('#legend').addEventListener('change', (e) => { if (e.target.id === 'zoom') { ui.zoom = e.target.checked; renderResults(); } });
+let rz = 0, lastW = 0;
+addEventListener('resize', () => {
+  clearTimeout(rz);
+  rz = setTimeout(() => {
+    measureHeader(); fitMemos();
+    if (D && $('#plot').clientWidth !== lastW) { lastW = $('#plot').clientWidth; renderResults(true); }
+  }, 150);
+});
+
+/* ------------------------------------------------------------ 기록 */
+function renderLog(force) {
+  ui.lAgent = fillSelect($('#l-agent'), D.agents.filter((a) => D.log.some((e) => e[1] === a)), ui.lAgent, '전체');
+  if (!changed('log', [D.log.length, D.log.length ? D.log[D.log.length - 1] : 0, D.agents, ui.lAgent, [...ui.lTags], ui.lQ, ui.lLimit]) && !force) return;
+  const q = ui.lQ.trim().toLowerCase(), seq = {};
+  const hit = [];
+  for (const e of D.log) {
+    const key = e[1] + '|' + (seq[e[1]] = (seq[e[1]] || 0) + 1);   // agent별 순번: 기록은 덧붙이기만 하므로 변하지 않는다
+    if (ui.lAgent && e[1] !== ui.lAgent) continue;
+    if (ui.lTags.size && !ui.lTags.has(e[3])) continue;
+    if (q && !(e[0] + ' ' + e[1] + ' ' + e[2]).toLowerCase().includes(q)) continue;
+    hit.push({ e, key });
+  }
+  hit.reverse();
+  $('#l-count').textContent = `${hit.length}건 / 전체 ${D.log.length}건`;
+  $('#log').innerHTML = hit.slice(0, ui.lLimit).map(({ e, key }) => {
+    const text = e[3] ? e[2].replace(/^\W{0,3}(LESSON|CANDIDATE|HANDOFF)\W{0,3}\s*/, '') : e[2];
+    const long = text.length > 230 || text.split('\n').length > 3, open = ui.openLogs.has(key);
+    return `<li class="lg${e[3] ? ' tagged ' + e[3] : ''}"><time title="${esc(e[0])}">${esc(shortT(e[0]))}</time>${who(e[1])}
+      <div class="body"><div class="lg-x${long && !open ? ' clamp' : ''}">${e[3] ? `<span class="badge ${e[3]}">${e[3]}</span>` : ''}${inline(text)}</div>
+      ${long ? `<button class="more" type="button" data-key="${esc(key)}">${open ? '접기' : '펼치기'}</button>` : ''}</div></li>`;
+  }).join('') || '<li class="empty">해당하는 기록이 없다</li>';
+  $('#l-more').innerHTML = hit.length > ui.lLimit
+    ? `<button class="btn" type="button" id="l-morebtn">더 보기 (${hit.length - ui.lLimit}건 남음)</button>` : '';
+  $('#l-more').style.display = hit.length > ui.lLimit ? '' : 'none';
+}
+$('#log').addEventListener('click', (e) => {
+  const b = e.target.closest('.more[data-key]');
+  if (!b) return;
+  ui.openLogs.has(b.dataset.key) ? ui.openLogs.delete(b.dataset.key) : ui.openLogs.add(b.dataset.key);
+  renderLog(true);
+});
+$('#l-more').addEventListener('click', (e) => { if (e.target.id === 'l-morebtn') { ui.lLimit += LOG_PAGE; renderLog(); } });
+$('#l-agent').addEventListener('change', (e) => { ui.lAgent = e.target.value; ui.lLimit = LOG_PAGE; renderLog(); });
+$('#l-q').addEventListener('input', (e) => { ui.lQ = e.target.value; ui.lLimit = LOG_PAGE; renderLog(); });
+document.querySelectorAll('.chip[data-tag]').forEach((b) => b.addEventListener('click', () => {
+  const t = b.dataset.tag;
+  ui.lTags.has(t) ? ui.lTags.delete(t) : ui.lTags.add(t);
+  b.setAttribute('aria-pressed', ui.lTags.has(t));
+  ui.lLimit = LOG_PAGE; renderLog();
+}));
+
+/* ------------------------------------------------------------ 질문과 답 */
+function renderQna() {
+  if (!changed('qna', [D.questions, D.agents])) return;
+  $('#qna').innerHTML = D.questions.slice().reverse().map((x) => `<li class="lg"><time title="${esc(x.t)}">${esc(shortT(x.t))}</time>${who(x.who)}
+    <div class="body"><div class="lg-x">${x.kind ? `<span class="badge ${x.kind === '답' ? 'a' : 'q'}">${esc(x.kind)}</span>` : ''}${inline(x.text)}</div></div></li>`).join('') || '<li class="empty">아직 질문이 없다</li>';
+}
+
+/* ------------------------------------------------------------ test 구조 탭 (facts/<site>.md, board fact)
+   사실은 수준별 (확정 · 강한 가능성 · 약한 가능성 · 모르는 것), 기각은 맨 아래 접힌 곳. 그림은 '구조 값'에서 그린 도식이다:
+   그림의 각 부분은 그 값의 근거 사실의 수준대로 (확정 진한 실선 · 강함 보통 · 약함/계산 옅은 점선 · 근거 없음 점). */
+const LV_KEY = { '확정': 'c', '강함': 's', '약함': 'w', '모름': 'u', '없음': 'n' };
+const LV_NAME = { '확정': '확정', '강함': '강한 가능성', '약함': '약한 가능성', '모름': '모르는 것', '없음': '근거 없음' };
+const lvBadge = (l, calc) => `<span class="lvb ${LV_KEY[l] || 'n'}">${esc(LV_NAME[l] || l)}${calc ? ' · 계산' : ''}</span>`;
+const VIEWS = { test: '#nav-test', lessons: '#nav-lessons' };   // board 화면과 바꿔 보는 따로 된 탭
+function setView(v, push) {
+  ui.view = VIEWS[v] ? v : 'board';
+  for (const k of Object.keys(VIEWS)) {
+    document.body.classList.toggle('v-' + k, ui.view === k);
+    const n = $(VIEWS[k]);
+    if (ui.view === k) n.setAttribute('aria-current', 'true'); else n.removeAttribute('aria-current');
+  }
+  try { sessionStorage.setItem('board-view', ui.view); } catch (e) {}
+  if (push && !STATIC) {       // 서버 판: 주소 #test · #lessons 로 이 탭을 바로 연다 (정적 사본은 # 뒤가 링크 비밀이라 건드리지 않는다)
+    try { history.replaceState(null, '', VIEWS[ui.view] ? '#' + ui.view : location.pathname + location.search); } catch (e) {}
+  }
+  if (ui.view === 'test' && D) renderFacts();
+  if (ui.view === 'lessons' && D) renderLessons();
+}
+$('nav.tabs').addEventListener('click', (e) => {
+  const a = e.target.closest('a');
+  if (!a) return;
+  if (a.classList.contains('tabx')) { e.preventDefault(); setView(a.dataset.view, true); scrollTo(0, 0); return; }
+  if (ui.view !== 'board') setView('board', true);   // 다른 구획: board 화면으로 돌아가 그 구획으로 (기본 동작 / 정적 사본의 scrollIntoView)
+});
+function rng(seed) {          // mulberry32: 고정 seed 로 늘 같은 예시
+  let a = seed >>> 0;
+  return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+function nums(v) { return ((v || '').replace(/(\d),(?=\d{3})/g, '$1').match(/\d+(?:\.\d+)?/g) || []).map(Number); }
+function lvStyle(l, calc) {   // 그림의 칠·선: 색 + 선 모양 + 불투명도 (색만으로 가르지 않는다)
+  const k = calc && (l === '확정' || l === '강함') ? 'w' : (LV_KEY[l] || 'n');
+  if (k === 'c') return 'fill="var(--lv-c)"';
+  if (k === 's') return 'fill="var(--lv-s)"';
+  if (k === 'w' || k === 'u') return 'fill="rgba(176,189,216,.55)" stroke="var(--lv-s)" stroke-width="1.2" stroke-dasharray="3 2"';
+  return 'fill="none" stroke="var(--lv-none)" stroke-width="1.2" stroke-dasharray="1 2"';
+}
+function figValues() {
+  const F = RAW.facts || {}, V = {};
+  (F.values || []).forEach((v) => { V[v.name] = v; });
+  const g = (n) => V[n] || { name: n, value: null, level: '없음' };
+  return { V, g };
+}
+function trainSvg(g) {
+  const P = nums(g('train_prompts').value)[0] || 150, M = nums(g('train_models').value)[0] || 18;
+  const rows = 10, cw = 15, ch = 12, x0 = 26, y0 = 40, st = lvStyle(g('train_answers_per_prompt').level);
+  let s = `<svg viewBox="0 0 330 ${y0 + rows * ch + 66}" role="img" aria-label="공식 train: 프롬프트 ${P}개마다 모델 ${M}개가 한 번씩 답한 꽉 찬 격자">`;
+  s += `<text class="h" x="0" y="15">공식 train</text><text class="s" x="0" y="31">행 = 프롬프트, 열 = 모델 ${M}</text>`;
+  for (let r = 0; r < rows; r++) for (let c = 0; c < M; c++) s += `<rect x="${x0 + c * cw}" y="${y0 + r * ch}" width="${cw - 3}" height="${ch - 3}" rx="2" ${st}/>`;
+  const yb = y0 + rows * ch;
+  s += `<text class="s" x="${x0 + M * cw / 2}" y="${yb + 12}" text-anchor="middle">⋮</text>`;
+  s += `<text x="0" y="${yb + 34}">프롬프트 ${esc(g('train_prompts').value || '?')} × 모델 ${esc(g('train_models').value || '?')}</text>`;
+  s += `<text class="s" x="0" y="${yb + 52}">프롬프트마다 모든 모델이 한 번씩 · ${esc(g('train_rows').value || '?')}행</text>`;
+  return s + '</svg>';
+}
+function testSvg(g) {
+  const M = nums(g('train_models').value)[0] || 18;
+  const ap = g('answers_per_prompt'), apn = nums(ap.value), lo = apn[0] || 5, hi = apn[1] || lo;
+  const gs = nums(g('grouped_share').value), gmid = gs.length ? (gs[0] + (gs[1] != null ? gs[1] : gs[0])) / 200 : 0.925;
+  const R = rng(20261126), rows = 10, cw = 15, ch = 12, x0 = 26, y0 = 40;
+  const w = Array.from({ length: M }, () => 0.35 + R() * 1.3), ws = w.reduce((a, b) => a + b, 0);   // 고르지 않은 예시 비율
+  const pick = () => { let u = R() * ws; for (let i = 0; i < M; i++) { u -= w[i]; if (u <= 0) return i; } return M - 1; };
+  const stA = lvStyle(ap.level, ap.calc), dup = g('same_model_pair'), np = g('test_prompt_overlap');
+  let s = '', grouped = 0;
+  for (let r = 0; r < rows; r++) {
+    const k = lo + Math.floor(R() * (hi - lo + 1)), cnt = {};
+    for (let i = 0; i < k; i++) { const m = pick(); cnt[m] = (cnt[m] || 0) + 1; }
+    if (r === 3 && !Object.values(cnt).some((n) => n > 1)) { const m = +Object.keys(cnt)[0]; cnt[m] += 1; }   // 겹친 칸을 적어도 하나 보인다
+    for (let c = 0; c < M; c++) {
+      const x = x0 + c * cw, y = y0 + r * ch;
+      if (!cnt[c]) { s += `<rect x="${x}" y="${y}" width="${cw - 3}" height="${ch - 3}" rx="2" fill="none" stroke="var(--line2)" stroke-width=".8"/>`; continue; }
+      grouped += cnt[c];
+      s += `<rect x="${x}" y="${y}" width="${cw - 3}" height="${ch - 3}" rx="2" ${stA}/>`;
+      if (cnt[c] > 1) { s += `<rect x="${x - 1}" y="${y - 1}" width="${cw - 1}" height="${ch - 1}" rx="2.5" fill="none" stroke="var(--dup)" stroke-width="2"${dup.level === '약함' || dup.level === '없음' ? ' stroke-dasharray="2 1.5"' : ''}/><text class="d" x="${x + (cw - 3) / 2}" y="${y + ch - 5}" text-anchor="middle">${cnt[c]}</text>`; }
+    }
+    s += `<rect x="2" y="${y0 + r * ch}" width="16" height="${ch - 3}" rx="2" ${lvStyle(np.level)}/>`;
+  }
+  let y = y0 + rows * ch + 8;
+  const un = Math.max(1, Math.round(grouped * (1 - gmid) / Math.max(gmid, 0.01)));
+  const stG = lvStyle(g('grouped_share').level);
+  s += `<text class="s" x="${x0}" y="${y + 10}">묶이지 않는 문단 ${esc(g('grouped_share').value ? '(' + (100 - (gs[1] != null ? gs[1] : gs[0])) + '~' + (100 - gs[0]) + '%)' : '')}</text>`;
+  y += 16;
+  for (let i = 0; i < Math.min(un, 6); i++) { const c = pick(); s += `<rect x="${x0 + c * cw}" y="${y + i * 9}" width="${cw - 3}" height="6" rx="1.5" ${stG}/>`; }
+  y += Math.min(un, 6) * 9 + 10;
+  const pc = g('per_model_counts'), pp = g('public_private'), bh = 34, stP = lvStyle(pc.level === '확정' ? '약함' : pc.level);   // 막대 높이는 예시라 옅게
+  for (let c = 0; c < M; c++) {
+    const a = bh * w[c] / 1.65, b = bh * (0.35 + R() * 1.3) / 1.65;
+    s += `<rect x="${x0 + c * cw}" y="${y + bh - a}" width="${(cw - 4) / 2}" height="${a}" ${stP}/><rect x="${x0 + c * cw + (cw - 4) / 2 + 1}" y="${y + bh - b}" width="${(cw - 4) / 2}" height="${b}" ${lvStyle(pp.level === '확정' ? '약함' : pp.level)} opacity=".7"/>`;
+  }
+  y += bh + 14;
+  s += `<text class="s" x="${x0}" y="${y}">모델별 문단 수 (왼쪽 public · 오른쪽 private, 높이는 예시)</text>`;
+  y += 22;
+  s += `<text x="0" y="${y}">약 ${esc((g('test_rows').value || '?').replace(/^약\s*/, ''))}행 · 프롬프트 ${esc(g('test_prompts').value || '?')}</text>`;
+  const head = `<svg viewBox="0 0 330 ${y + 8}" role="img" aria-label="숨은 test 추정: 새 프롬프트마다 답 ${esc(ap.value || '?')}개, 가끔 같은 모델이 두 번, 묶이지 않는 문단은 따로"><text class="h" x="0" y="15">숨은 test (추정)</text><text class="s" x="0" y="31">왼쪽 칸 = train 에 없는 새 프롬프트 · 2 = 같은 모델 두 번</text>`;
+  return head + s + '</svg>';
+}
+function valsTable() {
+  const F = RAW.facts || {};
+  const rows = (F.values || []).map((v) => `<tr><td class="vn">${esc(v.label)}</td><td class="vv">${v.value == null ? '<span class="note">없음</span>' : esc(v.value)}
+    ${v.value == null ? '' : `<span class="src">${lvBadge(v.level, v.calc)} ${v.data ? 'train 데이터' : ''}${v.refs.map((r) => r.rejected ? `<s title="기각된 사실">${esc(r.ref.split('/').pop())}</s>` : r.missing ? `<s title="없는 사실">${esc(r.ref)}</s>` : esc(r.ref.split('/').pop())).join(', ')}</span>`}</td></tr>`).join('');
+  return `<table class="tvals" aria-label="그림의 구조 값">${rows}</table>`;
+}
+function factCard(x) {
+  const k = x.rejected ? 'r' : LV_KEY[x.level] || 'u';
+  const ch = (x.changes || []).map((c) => `<span class="chg" title="${esc(c.why)}">${esc(shortT(c.at))} ${esc(LV_NAME[c.from])} → ${esc(LV_NAME[c.to])}${c.why ? ': ' + esc(clip(c.why, 60)) : ''}</span>`).join('');
+  const ev = (x.evidence || []).map((e) => `<li>${inline(e.text)}${e.later ? `<span class="by">— ${esc(e.site === x.site ? e.by : e.site + '/' + e.by)} ${esc(shortT(e.at))}</span>` : ''}</li>`).join('');
+  return `<article class="glass fact ${k}"><div class="ft"><span class="fid">${esc(x.id)}</span>${esc(x.text)}</div>
+    <div class="fm"><span>${esc(x.site)} · ${esc(x.by)} · ${esc((x.at || '').slice(0, 10))}</span>${ch}</div>
+    ${ev ? `<ul>${ev}</ul>` : ''}${x.rejected ? `<div class="why">기각 ${esc(shortT(x.rejected.at))} ${esc(x.rejected.by)}: ${esc(x.rejected.why)}</div>` : ''}</article>`;
+}
+function renderFacts() {
+  const F = RAW && RAW.facts;
+  if (!changed('facts', [F, ui.view])) return;
+  if (!F) { $('#tfig').innerHTML = '<div class="empty">test 구조를 읽지 못했다</div>'; $('#tfacts').innerHTML = ''; return; }
+  const { g } = figValues(), vc = F.values_changed;
+  $('#tfig').innerHTML = `<div class="pan">${trainSvg(g)}</div><div class="pan">${testSvg(g)}</div><div class="pan vals"><div class="panel-h" style="padding:0 0 4px">구조 값 <span class="note">그림이 이 값에서 그려진다</span></div>${valsTable()}</div>
+    <div class="fig-legend" aria-label="그림의 수준 표시"><span><i class="sw c"></i>확정</span><span><i class="sw s"></i>강한 가능성</span><span><i class="sw w"></i>약한 가능성 · 계산값 · 예시</span><span><i class="sw n"></i>근거 없음</span><span><i class="sw d"></i>같은 프롬프트에 같은 모델 두 번</span></div>
+    <div class="fig-note">도식이다: 실제 test 문단을 그린 것이 아니고, 위 값의 범위에서 고정 seed 로 뽑은 예시다.${vc ? ` 값 마지막 변경 ${esc(vc.at)} · ${esc(vc.site)}/${esc(vc.by)}.` : ''} 값 바꾸기: <code>board fact value</code></div>`;
+  const by = {};
+  (F.facts || []).forEach((x) => { (by[x.level] = by[x.level] || []).push(x); });
+  let h = '';
+  for (const [l, title] of F.levels || []) {
+    const xs = by[l] || [];
+    if (l === '모름') {
+      h += `<div class="lvgrp"><h3>${lvBadge(l)} <small>${xs.length}개 · 아직 모르는 것</small></h3><div class="glass"><ul class="unk">${xs.map((x) => `<li><span class="fid mono">${esc(x.id)}</span> ${esc(x.text)} <span class="fm">· ${esc(x.site)}/${esc(x.by)} ${esc((x.at || '').slice(0, 10))}</span>${(x.evidence || []).length ? `<ul>${x.evidence.map((e) => `<li>${inline(e.text)}</li>`).join('')}</ul>` : ''}</li>`).join('') || '<li class="empty">없음</li>'}</ul></div></div>`;
+      continue;
+    }
+    h += `<div class="lvgrp"><h3>${lvBadge(l)} <small>${xs.length}개${l === '확정' ? ' · 대회 페이지나 채점 결과로 직접 확인한 것' : l === '강함' ? ' · 여러 LB 점을 함께 맞추는 추정, 독립 확인이 있다' : ' · 근거가 하나이거나 다른 설명이 남아 있다'}</small></h3>
+      <div class="facts">${xs.map(factCard).join('') || '<div class="empty">없음</div>'}</div></div>`;
+  }
+  const rj = F.rejected || [];
+  if (rj.length) h += `<details class="glass rej"><summary>기각 ${rj.length}개 <span class="note">틀린 것으로 드러난 것 · 눌러서 펼치기</span></summary><div class="facts">${rj.map(factCard).join('')}</div></details>`;
+  if (!(F.facts || []).length && !rj.length) h += '<div class="glass empty">아직 적힌 사실이 없다. 적기: board fact add &lt;이름&gt; &lt;수준&gt; "&lt;사실&gt;" "&lt;근거&gt;" …</div>';
+  if ((F.problems || []).length) h += `<div class="tprob">파일 점검: ${F.problems.map(esc).join(' · ')}</div>`;
+  $('#tfacts').innerHTML = h;
+}
+
+/* ------------------------------------------------------------ 실험 교훈 탭 (lessons/<site>.md, board lesson)
+   분류(데이터에 적힌 순서)마다 카드. 카드 = 제목 · 내용 (쉬운 말) · 상세 (기술, 접힘). 관련 작업을 누르면 그 묶음의 그 작업으로. */
+const VB = { '효과 있음': ['g', '✓'], '효과 없음': ['n', '–'], '손해': ['c', '✕'], '진행 중': ['p', '…'], '참고': ['r', 'i'] };
+const vBadge = (v) => { const [k, ic] = VB[v] || VB['참고']; return `<span class="vb ${k}"><i aria-hidden="true">${ic}</i>${esc(v)}</span>`; };
+function lessonCard(c, L) {
+  const where = L.where || {};
+  const other = !!RAW.site && c.site !== RAW.site;
+  const rel = (c.related || []).map((t) => where[t]
+    ? `<button type="button" class="tlink" data-task="${esc(t)}" title="작업 ${esc(t)} 으로 (묶음 ${esc(where[t])})">${esc(t)}</button>`
+    : `<span class="tlink0" title="board 에 없는 작업 ID">${esc(t)}</span>`).join('');
+  const add = (c.added || []).map((a) => `<div class="li">+ ${inline(a.text)}<span class="by">— ${esc(a.site === c.site ? a.by : a.site + '/' + a.by)} ${esc(shortT(a.at))}</span></div>`).join('');
+  const edits = (c.edits || []).map((e) => `${e.at} ${e.by}: ${e.what}`).join('\n');
+  const open = ui.openLessons.has(c.ref);
+  return `<article class="glass lesson" data-ref="${esc(c.ref)}"><div class="lh">${vBadge(c.verdict)}${other ? `<span class="badge site" title="다른 site 의 카드">${esc(c.site)}</span>` : ''}<span class="lid">${esc(c.id)}</span></div>
+    <h4 class="lt">${esc(c.title)}</h4>
+    <p class="ls">${inline(c.summary)}</p>
+    <details class="ldet" data-ref="${esc(c.ref)}"${open ? ' open' : ''}><summary>상세 <span class="note">기술적인 내용 · 설정 · 숫자</span></summary>
+      <div class="md">${c.detail ? mdLite(c.detail) : '<div class="note">상세 없음</div>'}${add ? `<div class="add">${add}</div>` : ''}</div></details>
+    <div class="lf">${rel ? `<span class="rel">관련 ${rel}</span>` : ''}<span>${esc(c.site)}${c.by ? ' · ' + esc(c.by) : ''}</span><span${edits ? ` title="${esc(edits)}"` : ''}>갱신 ${esc(c.last || c.date || '')}</span></div></article>`;
+}
+function renderLessons() {
+  const L = RAW && RAW.lessons;
+  if (!changed('lessons', [L, ui.view, RAW && RAW.site])) return;
+  if (!L) { $('#ldash').innerHTML = '<div class="empty">실험 교훈을 읽지 못했다</div>'; $('#lcards').innerHTML = ''; return; }
+  const kinds = L.kinds || [], vc = L.verdict_counts || {};
+  $('#ldash').innerHTML = `<span class="tot"><b>${L.n || 0}</b>카드 · 분류 ${kinds.length}</span>
+    <span class="grp" aria-label="분류별 카드 수"><span class="lab">분류</span>${kinds.map((k, i) => `<button type="button" class="kchip" data-k="${i}">${esc(k.name)}<b>${k.cards.length}</b></button>`).join('') || '<span class="note">없음</span>'}</span>
+    <span class="grp" aria-label="판정별 개수"><span class="lab">판정</span>${(L.verdicts || []).map((v) => `<span class="vcount">${vBadge(v)}<b>${vc[v] || 0}</b></span>`).join('')}</span>`;
+  let h = kinds.map((k, i) => {
+    const n = {};
+    k.cards.forEach((c) => { n[c.verdict] = (n[c.verdict] || 0) + 1; });
+    const sub = (L.verdicts || []).filter((v) => n[v]).map((v) => `${v} ${n[v]}`).join(' · ');
+    return `<div class="lkind" id="lk-${i}"><h3>${esc(k.name)} <small>${k.cards.length}개${sub ? ' · ' + esc(sub) : ''}</small></h3>
+      <div class="lcards">${k.cards.map((c) => lessonCard(c, L)).join('')}</div></div>`;
+  }).join('');
+  if (!kinds.length) h = '<div class="glass empty" style="margin-top:14px">아직 적힌 교훈이 없다. 적기: board lesson add &lt;이름&gt; "&lt;제목&gt;" --kind &lt;분류&gt; --verdict &lt;판정&gt; --summary "&lt;내용&gt;" · 파일로: board lesson import &lt;이름&gt; &lt;파일&gt;</div>';
+  if ((L.problems || []).length) h += `<div class="tprob">파일 점검: ${L.problems.map(esc).join(' · ')}</div>`;
+  $('#lcards').innerHTML = h;
+}
+$('#ldash').addEventListener('click', (e) => {
+  const b = e.target.closest('.kchip');
+  if (!b) return;
+  const t = document.getElementById('lk-' + b.dataset.k);
+  if (t) t.scrollIntoView();
+});
+$('#lcards').addEventListener('toggle', (e) => {
+  const d = e.target; if (!d.classList || !d.classList.contains('ldet')) return;
+  d.open ? ui.openLessons.add(d.dataset.ref) : ui.openLessons.delete(d.dataset.ref);
+}, true);
+$('#lcards').addEventListener('click', (e) => {
+  const b = e.target.closest('.tlink');
+  if (b) gotoTask(b.dataset.task);
+});
+function gotoTask(id) {       // 관련 작업: 그 작업이 있는 묶음으로 가서 카드를 펼친다
+  const t = ((RAW.lessons || {}).where || {})[id];
+  if (!t) return;
+  if (t !== D.try) {
+    if (STATIC) { SC.go(t); } else { location.href = '?try=' + encodeURIComponent(t) + '#task-' + encodeURIComponent(id); return; }
+  }
+  focusTask(id);
+}
+function focusTask(id) {
+  const t = (RAW.tasks || []).find((x) => x.id === id);
+  setView('board', true);
+  if (!t) return;
+  if (ui.site && t.site !== ui.site) {
+    ui.site = '';
+    Object.keys(sig).forEach((k) => delete sig[k]);
+    D = view(RAW);
+    renderAll();
+  }
+  ui.shut.delete(t.state);
+  ui.openTasks.add(id);
+  renderTasks(true);
+  const el = document.querySelector(`.card-h[data-id="${CSS.escape(id)}"]`);
+  if (el) { el.scrollIntoView({ block: 'center' }); el.focus({ preventScroll: true }); }
+}
+
+/* ------------------------------------------------------------ 갱신 */
+function renderLive() {
+  const el = $('#reload');
+  el.className = 'btn live' + (fail ? ' bad' : '');
+  const t = D ? D.now.slice(11, 16) : '';
+  el.lastElementChild.innerHTML = fail
+    ? `갱신 실패${D ? '<span class="ls"> · ' + esc(t) + ' 기준</span>' : ''}`
+    : D ? `${esc(t)}<span class="ls"> 기준</span>` : '불러오는 중';
+  el.title = fail ? String(fail) : `${D ? D.now + (STATIC ? ' 에 만든 사본' : ' 기준') + '. ' : ''}${STATIC ? '누르면 새 사본이 있는지 지금 본다' : '누르면 지금 다시 읽는다 (30초마다 자동)'}`;
+}
+function view(raw) {          // site 고르기: 작업·기록·결과·질문·계획을 그 site 것만
+  const s = ui.site;
+  if (!s) return raw;
+  const tasks = raw.tasks.filter((t) => t.site === s);
+  const counts = {};
+  STATES.forEach((k) => { counts[k] = tasks.filter((t) => t.state === k).length; });
+  return Object.assign({}, raw, {
+    tasks, counts,
+    log: raw.log.filter((e) => e[4] === s),
+    results: { cols: raw.results.cols, rows: raw.results.rows.filter((r) => r[7] === s), excluded: raw.results.rows.filter((r) => r[7] === s && r[8]).length },
+    submissions: raw.submissions.filter((x) => x.site === s),
+    questions: raw.questions.filter((q) => q.site === s),
+    plans: raw.plans.filter((p) => p.site === s),
+  });
+}
+function lockLine(kind, l) {
+  if (!l || !l.agent) return '';
+  return `<div class="lockln"><span class="badge lock">${kind} 잠금</span> ${esc(l.agent)} · <span class="mono">${esc(l.task)}</span>${hhmm(l.since) ? ' · ' + esc(hhmm(l.since)) + '부터' : ''}</div>`;
+}
+function renderSites() {
+  const sel = $('#site-f');
+  const names = RAW.site_names || [];
+  if (ui.site && !names.includes(ui.site)) ui.site = '';
+  const opts = '<option value="">모두</option>' + names.map((n) => `<option value="${esc(n)}"${n === ui.site ? ' selected' : ''}>${esc(n)}</option>`).join('');
+  if (changed('site-opts', opts)) sel.innerHTML = opts;
+  sel.value = ui.site;
+  const sync = RAW.sync || {}, now = RAW.now;
+  const lastLog = RAW.log.length ? RAW.log[RAW.log.length - 1][0] : '';
+  const cells = [`<div class="site sync"><div class="sn">origin 과 맞춘 시각</div>
+      <div class="sm"><b>${esc(hhmm(sync.last_fetch_ok) || '없음')}</b>${sync.last_fetch_ok ? ' · ' + esc(ago(sync.last_fetch_ok, now)) : ''}</div>
+      <div class="sm">board 마지막 기록 <b>${esc(hhmm(lastLog) || '-')}</b></div></div>`];
+  for (const x of RAW.sites || []) {
+    const rl = parseLock(x.ram);   // GPU 잠금은 요약 카드에 (site 마다 한 줄)
+    cells.push(`<div class="site"><div class="sn">${esc(x.site)}${x.site === RAW.site && !STATIC ? ' <span class="badge">이 서버</span>' : ''}</div>
+      <div class="sm" title="마지막 소식 ${esc(x.updated || '?')}">소식 <b>${esc(ago(x.updated, now))}</b> · 진행 <b title="${esc(x.in_progress.join(' '))}">${x.in_progress.length}</b></div>
+      <div class="sm">도구 ${esc(x.tool || '?')}</div>${lockLine('RAM', rl)}</div>`);
+  }
+  if ((RAW.stale || []).length) cells.push(`<div class="site stalec"><div class="sn"><span class="badge stale">멈춤?</span></div><div class="sm mono">${esc(RAW.stale.join(' '))}</div></div>`);
+  const html = cells.join('');
+  if (changed('sites', html)) $('#sites').innerHTML = html;
+  const al = (RAW.errors || []).map((e) => `<div class="banner crit">${esc(e)}</div>`).join('');
+  if (changed('alerts', al)) $('#alerts').innerHTML = al;
+}
+$('#site-f').addEventListener('change', (e) => {
+  ui.site = e.target.value;
+  try { localStorage.setItem('board-site', ui.site); } catch (err) {}
+  Object.keys(sig).forEach((k) => delete sig[k]);
+  D = view(RAW);
+  renderAll();
+});
+function renderAll() {
+  agentIdx = {};
+  D.agents.forEach((a, i) => { agentIdx[a] = i; });
+  $('#logout').style.display = RAW.auth || STATIC ? '' : 'none';
+  renderSites();
+  renderTries(); renderTiles(); renderSubs(); renderCvTop(); renderTasks(); renderPlans();
+  renderResults(); renderLog(); renderQna(); renderFacts(); renderLessons();
+  measureHeader();
+  if (pendingTask && RAW.tasks.some((t) => t.id === pendingTask)) { const id = pendingTask; pendingTask = null; focusTask(id); }
+}
+async function load() {
+  lastTry = Date.now();
+  if (STATIC) return SC.poll();
+  try {
+    const r = await fetch('/api/state' + (TRY ? '?try=' + encodeURIComponent(TRY) : ''), { cache: 'no-store' });
+    if (r.status === 401) { location.href = '/login'; return; }   // 세션이 끝났다
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    RAW = await r.json();
+    D = view(RAW);
+    fail = null;
+    renderAll();
+  } catch (e) {
+    fail = e;
+  }
+  renderLive();
+}
+
+/* ------------------------------------------------------------ 머리: 높이 재기, 지금 보는 구획 */
+function measureHeader() {
+  const h = $('header.top').offsetHeight;
+  if (h) document.documentElement.style.setProperty('--hh', h + 'px');
+}
+(() => {
+  const links = [...document.querySelectorAll('nav.tabs a[href^="#sec-"]:not(.tabx)')];
+  const mark = () => {
+    if (ui.view !== 'board') return;
+    const y = ($('header.top').offsetHeight || 0) + 40;
+    let cur = null;
+    for (const a of links) {
+      const s = document.getElementById(a.getAttribute('href').slice(1));
+      if (s && !s.hidden && s.getBoundingClientRect().top <= y) cur = a;
+    }
+    links.forEach((a) => (a === cur ? a.setAttribute('aria-current', 'true') : a.removeAttribute('aria-current')));
+  };
+  let raf = 0;
+  addEventListener('scroll', () => { if (!raf) raf = requestAnimationFrame(() => { raf = 0; mark(); }); }, { passive: true });
+})();
+
+/* ------------------------------------------------------------ 정적 사본 (board web --export, tools/board/docs/DESIGN.md 'github.io 사본')
+   data.bin = "NTB1" | 반복 횟수(u32 BE) | salt 16 | iv 16 | AES-256-CTR 암호문 | HMAC-SHA256 32 (앞 전체에 대해, encrypt-then-MAC)
+   키 64바이트 = PBKDF2-SHA256("ntl-board/v1\n" + 링크 비밀 + "\n" + 4자리, salt, 반복) → 앞 32 AES, 뒤 32 HMAC
+   평문 = "NTP1" | gzip 길이(u32 BE) | gzip(JSON) | 0 채움. 링크 비밀은 주소의 # 뒤 (서버로 가지 않는다). WebCrypto 만 쓴다. */
+const SC = (() => {
+  const HDR = 40, TAG = 32, LOCK_MS = 5000, LINK_RE = /^[A-Za-z0-9_-]{43}$/;
+  const te = new TextEncoder();
+  const store = (s) => ({
+    get(k) { try { return s().getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { s().setItem(k, v); } catch (e) {} },
+    del(k) { try { s().removeItem(k); } catch (e) {} },
+  });
+  const ss = store(() => sessionStorage), ls = store(() => localStorage);
+  let link = '', code = '', bundle = null, lastHdr = '', unlocked = false, lockUntil = 0, tick = null;
+
+  async function fetchBlob() {
+    const r = await fetch('data.bin?_=' + Date.now(), { cache: 'no-store' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return new Uint8Array(await r.arrayBuffer());
+  }
+  const hdrOf = (b) => Array.from(b.subarray(0, HDR)).join(',');
+  async function open(blob, lk, cd) {      // 맞으면 묶음 JSON, 열쇠가 틀리면 null
+    if (blob.length < HDR + TAG || String.fromCharCode(...blob.subarray(0, 4)) !== 'NTB1') throw new Error('사본 파일 형식이 다르다');
+    const iters = new DataView(blob.buffer, blob.byteOffset).getUint32(4);
+    if (iters < 10000 || iters > 20000000) throw new Error('사본 파일 형식이 다르다');
+    const base = await crypto.subtle.importKey('raw', te.encode('ntl-board/v1\n' + lk + '\n' + cd), 'PBKDF2', false, ['deriveBits']);
+    const bits = new Uint8Array(await crypto.subtle.deriveBits(
+      { name: 'PBKDF2', hash: 'SHA-256', salt: blob.slice(8, 24), iterations: iters }, base, 512));
+    const mk = await crypto.subtle.importKey('raw', bits.slice(32), { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']);
+    const n = blob.length - TAG;
+    if (!(await crypto.subtle.verify('HMAC', mk, blob.slice(n), blob.slice(0, n)))) return null;
+    const ek = await crypto.subtle.importKey('raw', bits.slice(0, 32), 'AES-CTR', false, ['decrypt']);
+    const pt = new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-CTR', counter: blob.slice(24, 40), length: 128 }, ek, blob.slice(HDR, n)));
+    if (String.fromCharCode(...pt.subarray(0, 4)) !== 'NTP1') throw new Error('사본 내용 형식이 다르다');
+    const len = new DataView(pt.buffer).getUint32(4);
+    const ds = new Blob([pt.slice(8, 8 + len)]).stream().pipeThrough(new DecompressionStream('gzip'));
+    return JSON.parse(await new Response(ds).text());
+  }
+
+  function go(name) {           // 묶음 바꾸기 (묶음 단추, 실험 교훈의 관련 작업)
+    if (!bundle) return;
+    TRY = name; ss.set('ntb-try', TRY);
+    Object.keys(sig).forEach((k) => delete sig[k]);
+    show();
+  }
+  function show() {
+    const st = bundle.states || {};
+    if (!TRY || !st[TRY]) TRY = bundle.default;
+    RAW = st[TRY];
+    D = view(RAW);
+    fail = null;
+    renderAll();
+    renderCopy();
+    renderLive();
+  }
+  function renderCopy() {
+    if (!bundle) return;
+    const min = Math.max(0, Math.floor((Date.now() / 1000 - bundle.made_ts) / 60));
+    const old = min > 30;
+    const ago = min < 60 ? `${min}분 전` : `${Math.floor(min / 60)}시간 ${min % 60}분 전`;
+    const el = $('#copyinfo');
+    el.className = 'copyinfo banner' + (old ? ' warn old' : '');
+    el.textContent = old
+      ? `이 화면은 ${bundle.made} 에 만든 사본이다 (${ago}). 30분 넘게 지났다: 사본을 올리는 서버가 꺼졌거나 board 에 변화가 없었을 수 있다. 실시간 화면은 팀의 board 서버에서 본다.`
+      : `이 화면은 ${bundle.made} 에 만든 사본이다 (${ago}). 1분마다 새 사본이 있는지 본다.`;
+  }
+
+  function gate(html) { $('#gate').innerHTML = html; }
+  function gateNoLink() {
+    gate('<div class="msg"><h1>실험 board</h1><p>링크가 완전하지 않다. 받은 링크 전체(# 뒤까지)를 그대로 연다.</p></div>');
+  }
+  function gateForm(msg) {
+    gate(`<form id="g-form" autocomplete="off"><h1>실험 board</h1><label for="g-code">암호 4자리</label>
+      <input id="g-code" type="password" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" minlength="4" required autofocus>
+      <label class="rem"><input type="checkbox" id="g-rem"> 이 기기에서 기억</label>
+      <p class="err" id="g-err" role="alert">${esc(msg || '')}</p><button type="submit" id="g-btn">열기</button></form>`);
+    $('#g-form').addEventListener('submit', (e) => { e.preventDefault(); tryCode($('#g-code').value, $('#g-rem').checked); });
+    lockTick();
+    if (!(lockUntil > Date.now())) $('#g-code').focus();
+  }
+  function lockTick() {      // 틀리면 5초 동안 다시 넣지 못한다 (화면에서만 거는 대기)
+    clearInterval(tick);
+    const step = () => {
+      const left = Math.ceil((lockUntil - Date.now()) / 1000), inp = $('#g-code'), btn = $('#g-btn');
+      if (!inp) { clearInterval(tick); return; }
+      if (left > 0) {
+        inp.disabled = btn.disabled = true;
+        btn.textContent = `${left}초 뒤에 다시`;
+      } else {
+        clearInterval(tick);
+        inp.disabled = btn.disabled = false;
+        btn.textContent = '열기';
+        inp.value = '';
+        inp.focus();
+      }
+    };
+    step();
+    if (lockUntil > Date.now()) tick = setInterval(step, 200);
+  }
+  async function tryCode(cd, remember, quiet) {
+    if (lockUntil > Date.now()) return false;
+    if (!/^[0-9]{4}$/.test(cd)) { if (!quiet) $('#g-err').textContent = '숫자 4자리를 넣는다'; return false; }
+    const btn = $('#g-btn');
+    if (btn) { btn.disabled = true; btn.textContent = '푸는 중…'; $('#g-code').disabled = true; }
+    let res;
+    try {
+      const blob = await fetchBlob();
+      res = await open(blob, link, cd);
+      if (res) lastHdr = hdrOf(blob);
+    } catch (e) {
+      if (quiet) return false;
+      $('#g-err').textContent = '사본을 받지 못했다: ' + (e.message || e);
+      btn.disabled = $('#g-code').disabled = false; btn.textContent = '열기';
+      return false;
+    }
+    if (!res) {
+      if (quiet) return false;
+      lockUntil = Date.now() + LOCK_MS;
+      ss.set('ntb-lock', String(lockUntil));
+      $('#g-err').textContent = '암호가 다르다 (또는 링크가 바뀌었다)';
+      lockTick();
+      return false;
+    }
+    code = cd; bundle = res; unlocked = true;
+    ss.set('ntb-link', link); ss.set('ntb-code', cd);
+    if (remember) { ls.set('ntb-link', link); ls.set('ntb-code', cd); }
+    gate('');
+    document.documentElement.classList.remove('locked');
+    show();
+    return true;
+  }
+  function forget() {
+    ['ntb-link', 'ntb-code', 'ntb-try'].forEach((k) => { ss.del(k); ls.del(k); });
+  }
+
+  async function poll() {
+    if (!unlocked) return;
+    try {
+      const blob = await fetchBlob();
+      const h = hdrOf(blob);
+      if (h !== lastHdr) {
+        const res = await open(blob, link, code);
+        if (!res) {   // 링크 비밀이나 암호가 바뀌었다
+          forget(); unlocked = false; bundle = null;
+          document.documentElement.classList.add('locked');
+          gateForm('사본의 열쇠가 바뀌었다. 새 링크나 새 암호로 연다');
+          return;
+        }
+        bundle = res; lastHdr = h;
+        Object.keys(sig).forEach((k) => delete sig[k]);
+        show();
+        return;
+      }
+      fail = null;
+    } catch (e) {
+      fail = e;
+    }
+    renderCopy();
+    renderLive();
+  }
+
+  async function start() {
+    $('footer').textContent = '읽기 전용 암호화 사본 · 1분마다 새 사본 확인 · 시각은 board 서버 시각 · 묶음은 위에서 고른다';
+    const lo = $('#logout');
+    lo.textContent = '잠그기'; lo.title = '이 탭(과 이 기기에 기억한 것)에서 암호를 지운다'; lo.href = '#';
+    lo.addEventListener('click', (e) => { e.preventDefault(); forget(); location.reload(); });
+    $('#tries').addEventListener('click', (e) => {
+      const a = e.target.closest('a[data-try]');
+      if (!a || !bundle) return;
+      e.preventDefault();
+      go(a.dataset.try);
+    });
+    $('nav.tabs').addEventListener('click', (e) => {   // # 뒤의 링크 비밀을 지우지 않게 주소를 바꾸지 않고 옮긴다
+      const a = e.target.closest('a[href^="#sec-"]');
+      if (!a) return;
+      e.preventDefault();
+      const t = document.getElementById(a.getAttribute('href').slice(1));
+      if (t) t.scrollIntoView();
+    });
+    const h = location.hash.slice(1);
+    link = LINK_RE.test(h) ? h : (ss.get('ntb-link') || ls.get('ntb-link') || '');
+    if (!LINK_RE.test(link)) { link = ''; return gateNoLink(); }
+    lockUntil = +(ss.get('ntb-lock') || 0);
+    const saved = [ss, ls].find((s) => s.get('ntb-link') === link && /^[0-9]{4}$/.test(s.get('ntb-code') || ''));
+    if (saved) {
+      gate('<div class="msg"><h1>실험 board</h1><p>푸는 중…</p></div>');
+      if (await tryCode(saved.get('ntb-code'), saved === ls, true)) return;
+      forget();
+    }
+    gateForm('');
+  }
+  return { start, poll, go, _open: open };   // _open: 시험용 (tests/run_tests.py 가 node 로 부른다)
+})();
+$('#reload').addEventListener('click', load);
+setInterval(load, REFRESH_MS);
+document.addEventListener('visibilitychange', () => { if (!document.hidden && Date.now() - lastTry > REFRESH_MS) load(); });
+measureHeader();
+let pendingTask = null;       // 서버 판: ?try=<묶음>#task-<ID> 로 오면 그 작업 카드를 펼친다 (실험 교훈의 관련 작업)
+(() => {
+  let v = ''; try { v = sessionStorage.getItem('board-view') || ''; } catch (e) {}
+  if (!STATIC && (location.hash === '#test' || location.hash === '#lessons')) v = location.hash.slice(1);
+  if (!STATIC && location.hash.startsWith('#task-')) { v = 'board'; pendingTask = decodeURIComponent(location.hash.slice(6)); }
+  setView(v);
+})();
+if (STATIC) SC.start(); else load();
+</script>
+</body>
+</html>
